@@ -1,5 +1,5 @@
 # BadaFileReader
-## Testovaci nadpis
+## Testovaci nadpis pre markdown file
 
 * delenie 1
 * delenie 2
