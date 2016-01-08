@@ -76,12 +76,12 @@ Dialog::Dialog(QWidget *parent) :
     ui->ICAOcodeLineEdit->setText("B738__");
     ui->ACMassLineEdit->setText("65300");
     ui->CASLineEdit->setText("250");
-    ui->ROCDLineEdit->setText("1500");
+    ui->ROCDLineEdit->setText("-1500");
     ui->GradientLineEdit->setText("3");
     ui->MachLineEdit->setText("0.78");
     ui->Hp_0LineEdit->setText("22000");
     ui->Hp_nLineEdit->setText("0");
-    ui->delta_HpLineEdit->setText("2000");
+    ui->delta_HpLineEdit->setText("1000");
 
     ui->ROCDLineEdit->setEnabled(false);
     ui->GradientLineEdit->setEnabled(false);
@@ -1384,17 +1384,53 @@ void Dialog::run()
                                      + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
             }
 
-            Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
+            //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
+            //qDebug() << "THR1=" << Thr;
             D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
             D_vect << D;
 
             mach = TAStoM(TAS,T);
             MACH_vect << mach;
 
-            fM_vect << 1;
+
+            // need to know if H_trop is under transition Altitude or it is the other way
+            double minAlt = qMin(H_trop, transAlt);
+            double maxAlt = qMax(H_trop, transAlt);
+            qDebug() << transAlt << H_trop;
+
+            if(Hp_vect.at(i) <= minAlt)
+            {
+                // tu sa udrziava konst CAS a pocita sa mach
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+                qDebug() << "11";
+            }
+
+            else if(Hp_vect.at(i) > minAlt && Hp_vect.at(i) < maxAlt)
+            {
+                // tu sa udrziava konst mach a pocita sa CAS
+
+                if(minAlt == transAlt)
+                {
+                    fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+                    qDebug() << "1";
+                }
+                else if(minAlt == H_trop)
+                {
+                    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+                    qDebug() << "2";
+                }
+            }
+            else if(Hp_vect.at(i) >= maxAlt)
+            {
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+                qDebug() << "22";
+            }
+
+            fM_vect << fM;
             ROCD_vect << initROCD;
 
-            //Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
+            Thr = (ftpminTOmps(initROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
+            qDebug() << "THR=" << Thr;
             Thr_vect << Thr;
 
             time = getFlightTime(qAbs(initROCD), delta_Hp);
@@ -1406,8 +1442,8 @@ void Dialog::run()
             grad = getGradient(ftTOm(delta_Hp),dist);
             GRAD_vect << grad;
 
-            //FFlow = nominalFuelFlow(TAS, Thr)/60;
-            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+            FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
+            //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
             FUELFLOW_vect << FFlow;
 
             FWeight = fuelWeight(FFlow, time);
@@ -1489,13 +1525,13 @@ void Dialog::run()
                 time = dist / TAS;
                 TIME_vect << time;
 
-                ROCD = -(delta_Hp*60/time);
+                ROCD = -(delta_Hp/time) * 60;
                 ROCD_vect << ROCD;
 
                 Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
                 Thr_vect << Thr;
 
-                FFlow = nominalFuelFlow(TAS, Thr)/60;
+                FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
                 //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
@@ -1617,7 +1653,7 @@ void Dialog::run()
                 Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
                 Thr_vect << Thr;
 
-                FFlow = nominalFuelFlow(TAS, Thr)/60;
+                FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
                 //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
@@ -1695,7 +1731,7 @@ void Dialog::run()
                 Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
                 Thr_vect << Thr;
 
-                FFlow = nominalFuelFlow(TAS, Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
+                FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
                 //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
@@ -1707,10 +1743,8 @@ void Dialog::run()
         }
     }
 
-    //QString path = "C:/Users/KA/Desktop/outputfile.txt";
-    QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
-
-    //exportData(path,Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect);
+    QString path = "C:/Users/KA/Desktop/outputfile.txt";
+    //QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
 
     exportData(path,Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 }
@@ -1743,8 +1777,8 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
 
 void Dialog::parse_clicked()
 {
-    //QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
-    QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
+    QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
+    //QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
     QString apfFile = ui->ICAOcodeLineEdit->text();
     QString opfFile = ui->ICAOcodeLineEdit->text();
 
