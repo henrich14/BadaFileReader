@@ -813,7 +813,6 @@ double Dialog::fuelFlow(const double &vTAS, const double &Thr, const double &alt
     double nomFF = nominalFuelFlow(vTAS, Thr);
     double minFF = minimalFuelFlow(altitude);
     double cruiseFF = cruiseFuelFlow(Thr, vTAS);
-    qDebug() << nomFF/60 << minFF/60 << cruiseFF/60;
 
     if(phase == "CLIMB")
     {
@@ -1385,7 +1384,6 @@ void Dialog::run()
             }
 
             //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-            //qDebug() << "THR1=" << Thr;
             D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
             D_vect << D;
 
@@ -1396,13 +1394,11 @@ void Dialog::run()
             // need to know if H_trop is under transition Altitude or it is the other way
             double minAlt = qMin(H_trop, transAlt);
             double maxAlt = qMax(H_trop, transAlt);
-            qDebug() << transAlt << H_trop;
 
             if(Hp_vect.at(i) <= minAlt)
             {
                 // tu sa udrziava konst CAS a pocita sa mach
                 fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
-                qDebug() << "11";
             }
 
             else if(Hp_vect.at(i) > minAlt && Hp_vect.at(i) < maxAlt)
@@ -1412,25 +1408,21 @@ void Dialog::run()
                 if(minAlt == transAlt)
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
-                    qDebug() << "1";
                 }
                 else if(minAlt == H_trop)
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
-                    qDebug() << "2";
                 }
             }
             else if(Hp_vect.at(i) >= maxAlt)
             {
                 fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
-                qDebug() << "22";
             }
 
             fM_vect << fM;
             ROCD_vect << initROCD;
 
             Thr = (ftpminTOmps(initROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
-            qDebug() << "THR=" << Thr;
             Thr_vect << Thr;
 
             time = getFlightTime(qAbs(initROCD), delta_Hp);
@@ -1743,8 +1735,8 @@ void Dialog::run()
         }
     }
 
-    QString path = "C:/Users/KA/Desktop/outputfile.txt";
-    //QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
+    //QString path = "C:/Users/KA/Desktop/outputfile.txt";
+    QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
 
     exportData(path,Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 }
@@ -1777,8 +1769,8 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
 
 void Dialog::parse_clicked()
 {
-    QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
-    //QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
+    //QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
+    QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
     QString apfFile = ui->ICAOcodeLineEdit->text();
     QString opfFile = ui->ICAOcodeLineEdit->text();
 
