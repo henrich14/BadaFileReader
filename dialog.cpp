@@ -46,6 +46,9 @@ const int v_dDES1 = 5;
 const int v_dDES2 = 10;
 const int v_dDES3 = 20;
 const int v_dDES4 = 50;
+const int v_dDES5 = 5;
+const int v_dDES6 = 100;
+const int v_dDES7 = 200;
 
 // minimum speed coeficinets [-]
 const double C_Vmin = 1.3;
@@ -73,12 +76,12 @@ Dialog::Dialog(QWidget *parent) :
     ui->setupUi(this);
 
     ui->CAS_MACH_rb->setChecked(true);
-    ui->ICAOcodeLineEdit->setText("B738__");
-    ui->ACMassLineEdit->setText("65300");
-    ui->CASLineEdit->setText("250");
+    ui->ICAOcodeLineEdit->setText("TBM8__");
+    ui->ACMassLineEdit->setText("2980");
+    ui->CASLineEdit->setText("220");
     ui->ROCDLineEdit->setText("-1500");
     ui->GradientLineEdit->setText("3");
-    ui->MachLineEdit->setText("0.78");
+    ui->MachLineEdit->setText("0.6");
     ui->Hp_0LineEdit->setText("22000");
     ui->Hp_nLineEdit->setText("0");
     ui->delta_HpLineEdit->setText("1000");
@@ -391,9 +394,9 @@ void Dialog::readOPFfile(const QString &fileName)
             // Aerodynamics Block - Configuration characteristics
             if(counter >= 5 && counter <= 9)
             {
-                V_stall.insertMulti(opfList.at(3), opfList.at(4).toDouble());
-                C_D0.insertMulti(opfList.at(3), opfList.at(5).toDouble());
-                C_D2.insertMulti(opfList.at(3), opfList.at(6).toDouble());
+                V_stall.insertMulti(opfList.at(2), opfList.at(4).toDouble());
+                C_D0.insertMulti(opfList.at(2), opfList.at(5).toDouble());
+                C_D2.insertMulti(opfList.at(2), opfList.at(6).toDouble());
                 PhaseChar.insertMulti(opfList.at(2), opfList.at(3));
             }
             if(counter == 13)
@@ -453,7 +456,7 @@ void Dialog::readOPFfile(const QString &fileName)
     //qDebug() << "m_ref=" << m_ref << "m_min=" << m_min << "m_max=" << m_max << "m_pyld=" << m_pyld << "G_w=" << G_w;
     //qDebug() << "V_M0=" << V_MO << "M_M0=" << M_MO<< "h_M0=" << h_MO << "h_max=" << h_max << "G_t=" << G_t;
     //qDebug() << "S=" << S << "C_lbo=" << C_lbo << "k=" << k << "C_M16=" << C_M16;
-    //qDebug() << "V_stall=" << V_stall << "C_D0=" << C_D0 << "C_D2=" << C_D2 << "PhaseChar=" << PhaseChar;
+    qDebug() << "V_stall=" << V_stall << "C_D0=" << C_D0 << "C_D2=" << C_D2 << "PhaseChar=" << PhaseChar;
     //qDebug() << "C_D0deltaLDG=" << C_D0deltaLDG;
     //qDebug() << "C_Tc1=" << C_Tc1 << "C_Tc2=" << C_Tc2 << "C_Tc3=" << C_Tc3 << "C_Tc4=" << C_Tc4 << "C_Tc5=" << C_Tc5;
     //qDebug() << "C_Tdeslow=" << C_Tdeslow << "C_Tdeshigh=" << C_Tdeshigh << "H_pdes=" << H_pdes << "C_Tdesapp=" << C_Tdesapp << "C_Tdesld=" << C_Tdesld;
@@ -480,7 +483,7 @@ QStringList Dialog::parseLine(const QString &line)
     return parsedList;
 }
 
-double Dialog::CASschedule(const double &altitude, const double &transAlt, const QString &phase, const double &ACMass)
+double Dialog::CASschedule(const double &altitude, const double &transAlt, const QString &phase, const double &ACMass, const QString &EngType)
 {
     // calculate the CAS schedule based on altitude; stall speed is corrected for the difference in ACMass from the referrence mass
     // input altitude [ft]; transition Altitude [ft]; phase [TO / IC / CR / AP / LD]; Actual Aircraft Mass [kg]
@@ -488,40 +491,70 @@ double Dialog::CASschedule(const double &altitude, const double &transAlt, const
 
     double CAS_min = 0.0;
     double v_min = 0.0;
-    double corV_stall_LD = correctedSpeed(V_stall[PhaseChar["LD"]], ACMass);
+    double corV_stall_LD = correctedSpeed(V_stall["LD"], ACMass);
 
     // calculate speed schedule depending on altitude
-    if(altitude >= 0 && altitude < 1000)
+    if(EngType == "Jet" || EngType == "Turboprop")
     {
-        CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
+        if(altitude >= 0 && altitude < 1000)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
+        }
+        else if(altitude >= 1000 && altitude < 1500)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
+        }
+        else if(altitude >= 1500 && altitude < 2000)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
+        }
+        else if(altitude >= 2000 && altitude < 3000)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
+        }
+        else if(altitude >= 3000 && altitude < 6000)
+        {
+            CAS_min = qMin(Vdes1["AV"],220);
+        }
+        else if(altitude >= 6000 && altitude < 10000)
+        {
+            CAS_min = qMin(Vdes1["AV"],250);
+        }
+        else if(altitude >= 10000 && altitude < transAlt)
+        {
+            CAS_min = Vdes2["AV"];
+        }
+        else if(altitude >= transAlt)
+        {
+            CAS_min = Mdes["AV"];   // switch from CAS to MACH speed
+        }
     }
-    else if(altitude >= 1000 && altitude < 1500)
+    else if(EngType == "Piston")
     {
-        CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
-    }
-    else if(altitude >= 1500 && altitude < 2000)
-    {
-        CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
-    }
-    else if(altitude >= 2000 && altitude < 3000)
-    {
-        CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
-    }
-    else if(altitude >= 3000 && altitude < 6000)
-    {
-        CAS_min = qMin(Vdes1["AV"],220);
-    }
-    else if(altitude >= 6000 && altitude < 10000)
-    {
-        CAS_min = qMin(Vdes1["AV"],250);
-    }
-    else if(altitude >= 10000 && altitude < transAlt)
-    {
-        CAS_min = Vdes2["AV"];
-    }
-    else if(altitude >= transAlt)
-    {
-        CAS_min = Mdes["AV"];   // switch from CAS to MACH speed
+        if(altitude >= 0 && altitude < 500)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES5;
+        }
+        else if(altitude >= 500 && altitude < 1000)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES6;
+        }
+        else if(altitude >= 1000 && altitude < 1500)
+        {
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES7;
+        }
+        else if(altitude >= 1500 && altitude < 10000)
+        {
+            CAS_min = Vdes1["AV"];
+        }
+        else if(altitude >= 10000 && altitude < transAlt)
+        {
+            CAS_min = Vdes2["AV"];
+        }
+        else if(altitude >= transAlt)
+        {
+            CAS_min = Mdes["AV"];   // switch from CAS to MACH speed
+        }
     }
 
     // check minimal speed for each phase of flight
@@ -583,16 +616,27 @@ double Dialog::calculateShareFactor(const double &M, const double &T, const QStr
     return shareFactor;
 }
 
-double Dialog::calculateMaxClimbThrust(const double &altitude)
+double Dialog::calculateMaxClimbThrust(const double &altitude, const double &vTAS, const QString &EngType)
 {
     // calculate the maximum climb thrust
-    // input altitude [ft]
+    // input altitude [ft]; TAS [kt]; Engine tpe [Jet / Turboprop / Piston]
     // output max climb thrust [N]
 
     double Thr = 1.0;
 
     // max climb thrust for Jet engines
-    Thr = C_Tc1 * (1 - altitude/C_Tc2 + C_Tc3*altitude*altitude);
+    if(EngType == "Jet")
+    {
+        Thr = C_Tc1 * (1 - altitude/C_Tc2 + C_Tc3*altitude*altitude);
+    }
+    else if(EngType == "Turboprop")
+    {
+        Thr = (C_Tc1/vTAS) * (1 - altitude/C_Tc2) + C_Tc3;
+    }
+    else if(EngType == "Piston")
+    {
+        Thr = C_Tc1 * (1 - altitude/C_Tc2) + C_Tc3/vTAS;
+    }
 
     // corrected max climb thrust for temperature deviations from standard atmosphere
     double deltaT_eff = deltaT - C_Tc4;
@@ -610,14 +654,14 @@ double Dialog::calculateMaxClimbThrust(const double &altitude)
     return Thr;
 }
 
-double Dialog::calculateDescentThrust(const double &altitude, const QString &config)
+double Dialog::calculateDescentThrust(const double &altitude, const double &Thr_max_climb, const QString &config)
 {
     // calculate descent thrust
     // input altitude [ft]; config [CR / AP / LD]
     // output thrust [N]
 
     double Thr = 0.0;
-    double Thr_max_climb = calculateMaxClimbThrust(altitude);
+    //double Thr_max_climb = calculateMaxClimbThrust(altitude);
 
     if(altitude > H_pdes)
     {
@@ -650,25 +694,32 @@ double Dialog::calculateDrag(const double &m, const double &ro, const double &vT
     // output drug [N]
 
     double CL = (2 * m * g0) / (ro * vTAS*vTAS * S * qCos(bankAngle));
-    double CD;
+    double CD, D;
 
-    if(config == "CR")
+    if(C_D0["AP"] == 0 || C_D0["LD"] == 0 || C_D2["AP"] == 0 || C_D2["LD"] == 0 || C_D0deltaLDG == 0)
     {
-        // nominal conditions
-        CD = C_D0[PhaseChar[config]] + C_D2[PhaseChar[config]] * CL*CL;
+        CD = C_D0[config]+ C_D2[config] * CL*CL;
     }
-    else if(config == "AP")
+    else
     {
-        // approach configuration
-        CD = C_D0[PhaseChar[config]] + C_D2[PhaseChar[config]] * CL*CL;
-    }
-    else if(config == "LD")
-    {
-        // landing configuration
-        CD = C_D0[PhaseChar[config]] + C_D0deltaLDG + C_D2[PhaseChar[config]] * CL*CL;
+        if(config == "CR")
+        {
+            // nominal conditions
+            CD = C_D0[config] + C_D2[config] * CL*CL;
+        }
+        else if(config == "AP")
+        {
+            // approach configuration
+            CD = C_D0[config]+ C_D2[config] * CL*CL;
+        }
+        else if(config == "LD")
+        {
+            // landing configuration
+            CD = C_D0[config] + C_D0deltaLDG + C_D2[config] * CL*CL;
+        }
     }
 
-    double D = (CD * ro * vTAS*vTAS * S) / 2;
+    D = (CD * ro * vTAS*vTAS * S) / 2;
 
     return D;
 }
@@ -764,55 +815,90 @@ double Dialog::getGradient(const double &delta_Hp, const double &distance)
     return (gradient/PI)*180;
 }
 
-double Dialog::nominalFuelFlow(const double &vTAS, const double &Thr)
+double Dialog::nominalFuelFlow(const double &vTAS, const double &Thr, const QString &EngType)
 {
     // calculate nominal fuel flow based on the thrust specific fuel consumption
     // all flight phases EXCEPT IDLE DESCENT and CRUISE -> use minimal fuel flow
-    // input TAS [kt]; Thr[N]
-    // output fuelCons [kg/min]
+    // input TAS [kt]; Thr [N]; EngType [Jet / Turboprop / Piston]
+    // output nominal fuel flow [kg/min]
 
     double nominalFF = 0.0;
+    double fuelCons = 0.0;
 
-    double fuelCons = (C_f1 * (1 + vTAS/C_f2)) / 1000;  // divided by 1000 to calculate from [/kN] to [/N]
-    nominalFF = fuelCons * Thr;
+    if(EngType == "Piston")
+    {
+        nominalFF = C_f1;
+    }
+    else
+    {
+        if(EngType == "Jet")
+        {
+            fuelCons = (C_f1 * (1 + vTAS/C_f2)) / 1000;  // divided by 1000 to calculate from [/kN] to [/N]
+        }
+        else if(EngType == "Turboprop")
+        {
+            fuelCons = (C_f1 * (1 - vTAS/C_f2) * (vTAS/1000)) / 1000;  // divided by 1000 to calculate from [/kN] to [/N]
+        }
+
+        nominalFF = fuelCons * Thr;
+    }
 
     return nominalFF;
 }
 
-double Dialog::minimalFuelFlow(const double &altitude)
+double Dialog::minimalFuelFlow(const double &altitude, const QString &EngType)
 {
     // calculate minimal fuel flow
-    // input altitude [ft]
-    // output fuel flow [kg/min]
+    // input altitude [ft]; EngType [Jet / Turboprop / Piston]
+    // output minimal fuel flow [kg/min]
 
     double minFF = 0.0;
 
-    minFF = C_f3 * (1 - altitude/C_f4);
+    if(EngType == "Jet" || EngType == "Turboprop")
+    {
+        minFF = C_f3 * (1 - altitude/C_f4);
+    }
+    else if(EngType == "Piston")
+    {
+        minFF = C_f3;
+    }
 
     return minFF;
 }
 
-double Dialog::cruiseFuelFlow(const double &Thr, const double &vTAS)
+double Dialog::cruiseFuelFlow(const double &Thr, const double &vTAS, const QString &EngType)
 {
-    double cFF = 0.0;
+    // calculate cruise fuel flow based on the thrust specific fuel consumption
+    // input TAS [kt]; Thr [N]; EngType [Jet / Turboprop / Piston]
+    // output cruise fuel flow [kg/min]
 
-    double fuelcons = C_f1 * (1 + vTAS/C_f2) / 1000;    // divided by 1000 to calculate from [/kN] to [/N]
-    cFF = fuelcons * Thr * C_fcr;
+    double cFF = 0.0;
+    double fuelcons = 0.0;
+
+    if(EngType == "Piston")
+    {
+        cFF = C_f1 * C_fcr;
+    }
+    else
+    {
+        fuelcons = C_f1 * (1 + vTAS/C_f2) / 1000;    // divided by 1000 to calculate from [/kN] to [/N]
+        cFF = fuelcons * Thr * C_fcr;
+    }
 
     return cFF;
 }
 
-double Dialog::fuelFlow(const double &vTAS, const double &Thr, const double &altitude, const QString &phase, const QString flightConfig)
+double Dialog::fuelFlow(const double &vTAS, const double &Thr, const double &altitude, const QString &phase, const QString flightConfig, const QString &EngType, const bool &Idle)
 {
     // calculate Fuelflow
-    // input TAS [kt]; Thr [N]; Altitude [ft]; phase [CLIMB \ CRUISE \ DESCENT]; flightConfig [AP \ LD \ CR \ IC \ TO]
+    // input TAS [kt]; Thr [N]; Altitude [ft]; phase [CLIMB \ CRUISE \ DESCENT]; flightConfig [AP \ LD \ CR \ IC \ TO]; EngType [Jet / Turboprop / Piston]; IDLE [true / false]
     // output FF [kg/min]
 
 
     double FF = 0.0;
-    double nomFF = nominalFuelFlow(vTAS, Thr);
-    double minFF = minimalFuelFlow(altitude);
-    double cruiseFF = cruiseFuelFlow(Thr, vTAS);
+    double nomFF = nominalFuelFlow(vTAS, Thr, EngType);
+    double minFF = minimalFuelFlow(altitude, EngType);
+    double cruiseFF = cruiseFuelFlow(Thr, vTAS, EngType);
 
     if(phase == "CLIMB")
     {
@@ -830,7 +916,14 @@ double Dialog::fuelFlow(const double &vTAS, const double &Thr, const double &alt
         }
         else
         {
-            FF = minFF;
+            if(Idle)
+            {
+                FF = minFF; // IDLE Descent
+            }
+            else
+            {
+                FF = nomFF; // use nominal because it is not idle descent -> when calculating based on fixed ROCD or gradient
+            }
         }
     }
 
@@ -914,23 +1007,23 @@ double Dialog::calculateVmin(const QString &phase)
 
     if(phase == "TO")
     {
-        v_min = C_VminTO * V_stall[PhaseChar["TO"]];
+        v_min = C_VminTO * V_stall["TO"];
     }
     else if(phase == "IC")
     {
-        v_min = C_Vmin * V_stall[PhaseChar["IC"]];
+        v_min = C_Vmin * V_stall["IC"];
     }
     else if(phase == "CR")
     {
-        v_min = C_Vmin * V_stall[PhaseChar["CR"]];
+        v_min = C_Vmin * V_stall["CR"];
     }
     else if(phase == "AP")
     {
-        v_min = C_Vmin * V_stall[PhaseChar["AP"]];
+        v_min = C_Vmin * V_stall["AP"];
     }
     else if(phase == "LD")
     {
-        v_min = C_Vmin * V_stall[PhaseChar["LD"]];
+        v_min = C_Vmin * V_stall["LD"];
     }
 
     return v_min;
@@ -961,7 +1054,15 @@ double Dialog::getMaxAltitude(const double &ActualACMass)
     {
         tempT = 0;
     }
-    maxAlt = qMin(h_MO, h_max + G_t*(tempT) + G_w*(m_max - ActualACMass));
+
+    if(h_max != 0)
+    {
+        maxAlt = qMin(h_MO, h_max + G_t*(tempT) + G_w*(m_max - ActualACMass));
+    }
+    else
+    {
+        maxAlt = h_MO;
+    }
 
     return maxAlt;
 }
@@ -1101,6 +1202,7 @@ void Dialog::run()
 
             double minAlt = qMin(H_trop, transAlt);
             double maxAlt = qMax(H_trop, transAlt);
+            qDebug() << H_trop << transAlt;
 
             if(Hp_vect.at(i) <= minAlt)
             {
@@ -1111,10 +1213,15 @@ void Dialog::run()
                 TAS_vect << mpsTOknots(TAS);
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
 
-                // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                // test the min speed and buffeting speed limits for Jet
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                double minCAS = vmin;
+                if(EngineType == "Jet")
+                {
+                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                    minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                }
+
                 if(minCAS > CAS && minLimitReached == false)
                 {
                     minLimitReached = true;
@@ -1137,7 +1244,8 @@ void Dialog::run()
                                          + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
                 }
 
-                Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
+                double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
+                Thr = calculateDescentThrust(Hp_vect.at(i),Thr_max_climb, flightConfig);
                 D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
                 Thr_vect << Thr;
                 D_vect << D;
@@ -1159,7 +1267,7 @@ void Dialog::run()
                 grad = getGradient(ftTOm(delta_Hp),dist);
                 GRAD_vect << grad;
 
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
                 FWeight = fuelWeight(FFlow, time);
@@ -1181,9 +1289,14 @@ void Dialog::run()
                     flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
                     // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                    double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    double minCAS = vmin;
+                    if(EngineType == "Jet")
+                    {
+                        double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                        minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    }
+
                     if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
                     {
                         minLimitReached = true;
@@ -1221,9 +1334,14 @@ void Dialog::run()
                     MACH_vect << mach;
 
                     // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                    double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    double minCAS = vmin;
+                    if(EngineType == "Jet")
+                    {
+                        double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                        minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    }
+
                     if(minCAS > CAS && minLimitReached == false)
                     {
                         minLimitReached = true;
@@ -1250,7 +1368,8 @@ void Dialog::run()
                     fM_vect << fM;
                 }
 
-                Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
+                double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
+                Thr = calculateDescentThrust(Hp_vect.at(i), Thr_max_climb, flightConfig);
                 D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
                 Thr_vect << Thr;
                 D_vect << D;
@@ -1267,7 +1386,7 @@ void Dialog::run()
                 grad = getGradient(ftTOm(delta_Hp),dist);
                 GRAD_vect << grad;
 
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
                 FWeight = fuelWeight(FFlow, time);
@@ -1290,9 +1409,14 @@ void Dialog::run()
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
                 // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                double minCAS = vmin;
+                if(EngineType == "Jet")
+                {
+                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                    minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                }
+
                 if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
                 {
                     minLimitReached = true;
@@ -1315,7 +1439,8 @@ void Dialog::run()
                                          + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
                 }
 
-                Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
+                double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
+                Thr = calculateDescentThrust(Hp_vect.at(i), Thr_max_climb, flightConfig);
                 D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
                 Thr_vect << Thr;
                 D_vect << D;
@@ -1332,7 +1457,7 @@ void Dialog::run()
                 grad = getGradient(ftTOm(delta_Hp),dist);
                 GRAD_vect << grad;
 
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
                 FWeight = fuelWeight(FFlow, time);
@@ -1358,9 +1483,14 @@ void Dialog::run()
             flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
 
             // test the min speed and buffeting speed limits
-            double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-            double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-            double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+            double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+            double minCAS = vmin;
+            if(EngineType == "Jet")
+            {
+                double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+            }
+
             if(minCAS > CAS && minLimitReached == false)
             {
                 minLimitReached = true;
@@ -1434,8 +1564,7 @@ void Dialog::run()
             grad = getGradient(ftTOm(delta_Hp),dist);
             GRAD_vect << grad;
 
-            FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
-            //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
             FUELFLOW_vect << FFlow;
 
             FWeight = fuelWeight(FFlow, time);
@@ -1466,9 +1595,14 @@ void Dialog::run()
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
 
                 // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                double minCAS = vmin;
+                if(EngineType == "Jet")
+                {
+                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                    minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                }
+
                 if(minCAS > CAS && minLimitReached == false)
                 {
                     minLimitReached = true;
@@ -1523,8 +1657,7 @@ void Dialog::run()
                 Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
                 Thr_vect << Thr;
 
-                FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
-                //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
                 FWeight = fuelWeight(FFlow, time);
@@ -1547,9 +1680,14 @@ void Dialog::run()
                     flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
                     // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                    double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    double minCAS = vmin;
+                    if(EngineType == "Jet")
+                    {
+                        double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                        minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    }
+
                     if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
                     {
                         minLimitReached = true;
@@ -1587,9 +1725,14 @@ void Dialog::run()
                     MACH_vect << mach;
 
                     // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                    double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    double minCAS = vmin;
+                    if(EngineType == "Jet")
+                    {
+                        double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                        minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                    }
+
                     if(minCAS > CAS && minLimitReached == false)
                     {
                         minLimitReached = true;
@@ -1645,8 +1788,7 @@ void Dialog::run()
                 Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
                 Thr_vect << Thr;
 
-                FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
-                //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
                 FWeight = fuelWeight(FFlow, time);
@@ -1669,9 +1811,14 @@ void Dialog::run()
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
                 // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass);
-                double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
-                double minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                double minCAS = vmin;
+                if(EngineType == "Jet")
+                {
+                    double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                    minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
+                }
+
                 if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
                 {
                     minLimitReached = true;
@@ -1723,8 +1870,7 @@ void Dialog::run()
                 Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
                 Thr_vect << Thr;
 
-                FFlow = nominalFuelFlow(mpsTOknots(TAS), Thr)/60; // pouzijem nominal, lebo to uz nieje idle descent
-                //FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig) / 60; // in [kg/s]
+                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
                 FUELFLOW_vect << FFlow;
 
                 FWeight = fuelWeight(FFlow, time);
@@ -1778,6 +1924,7 @@ void Dialog::parse_clicked()
     readOPFfile(path + opfFile + ".OPF");
 
     run();
+    qDebug() << "EngineType =" << EngineType;
 }
 
 void Dialog::CASMACH_selected()

@@ -34,19 +34,19 @@ public:
     void readAPFfile(const QString &fileName);
     void readOPFfile(const QString &fileName);
     QStringList parseLine(const QString &line);
-    double CASschedule(const double &altitude, const double &transAlt, const QString &phase, const double &ACMass);
+    double CASschedule(const double &altitude, const double &transAlt, const QString &phase, const double &ACMass, const QString &EngType);
     double calculateShareFactor(const double &M, const double &T, const QString &factor);
-    double calculateMaxClimbThrust(const double &altitude);
-    double calculateDescentThrust(const double &altitude, const QString &config);
+    double calculateMaxClimbThrust(const double &altitude, const double &vTAS, const QString &EngType);
+    double calculateDescentThrust(const double &altitude, const double &Thr_max_climb, const QString &config);
     double calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config);
     QString getFlightConfiguration(const QString &phase, const double &altitude, const double &vCAS);
     double getFlightTime(const double &ROCD, const double &delta_Hp);
     double getFlightDistance(const double &time, const double &vTAS);
     double getGradient(const double &delta_Hp, const double &distance);
-    double nominalFuelFlow(const double &vTAS, const double &Thr); // thrust specific fuel consumption
-    double minimalFuelFlow(const double &altitude);
-    double cruiseFuelFlow(const double &Thr, const double &vTAS);
-    double fuelFlow(const double &vTAS, const double &Thr, const double &altitude, const QString &phase, const QString flightConfig);
+    double nominalFuelFlow(const double &vTAS, const double &Thr, const QString &EngType); // thrust specific fuel consumption
+    double minimalFuelFlow(const double &altitude, const QString &EngType);
+    double cruiseFuelFlow(const double &Thr, const double &vTAS, const QString &EngType);
+    double fuelFlow(const double &vTAS, const double &Thr, const double &altitude, const QString &phase, const QString flightConfig, const QString &EngType, const bool &Idle);
     double fuelWeight(const double &fuelflow, const double &time);
 
     double getMinCAS(const double &vmin, const double &buffetLimit, const double &altitude);
