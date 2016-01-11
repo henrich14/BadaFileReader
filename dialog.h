@@ -38,7 +38,7 @@ public:
     double calculateShareFactor(const double &M, const double &T, const QString &factor);
     double calculateMaxClimbThrust(const double &altitude, const double &vTAS, const QString &EngType);
     double calculateDescentThrust(const double &altitude, const double &Thr_max_climb, const QString &config);
-    double calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config);
+    double calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config, const bool &expedite);
     QString getFlightConfiguration(const QString &phase, const double &altitude, const double &vCAS);
     double getFlightTime(const double &ROCD, const double &delta_Hp);
     double getFlightDistance(const double &time, const double &vTAS);
@@ -134,6 +134,7 @@ private slots:
     void CASMACH_selected();
     void ROCD_selected();
     void Gradient_selected();
+    void EmergencyDescent_selected();
 };
 
 #endif // DIALOG_H

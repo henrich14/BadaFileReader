@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>302</width>
-    <height>297</height>
+    <width>365</width>
+    <height>318</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -61,7 +61,21 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QRadioButton" name="EmergencyDescent_rb">
+        <property name="text">
+         <string>Emergency descent</string>
+        </property>
+       </widget>
+      </item>
      </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="expediteChB">
+     <property name="text">
+      <string>expedite descent</string>
+     </property>
     </widget>
    </item>
    <item>

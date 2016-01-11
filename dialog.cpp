@@ -76,15 +76,15 @@ Dialog::Dialog(QWidget *parent) :
     ui->setupUi(this);
 
     ui->CAS_MACH_rb->setChecked(true);
-    ui->ICAOcodeLineEdit->setText("TBM8__");
-    ui->ACMassLineEdit->setText("2980");
-    ui->CASLineEdit->setText("220");
+    ui->ICAOcodeLineEdit->setText("B738__");
+    ui->ACMassLineEdit->setText("65300");
+    ui->CASLineEdit->setText("290");
     ui->ROCDLineEdit->setText("-1500");
     ui->GradientLineEdit->setText("3");
-    ui->MachLineEdit->setText("0.6");
-    ui->Hp_0LineEdit->setText("22000");
+    ui->MachLineEdit->setText("0.78");
+    ui->Hp_0LineEdit->setText("38000");
     ui->Hp_nLineEdit->setText("0");
-    ui->delta_HpLineEdit->setText("1000");
+    ui->delta_HpLineEdit->setText("2000");
 
     ui->ROCDLineEdit->setEnabled(false);
     ui->GradientLineEdit->setEnabled(false);
@@ -93,6 +93,16 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(CASMACH_selected()));
     connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
     connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(Gradient_selected()));
+    connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(EmergencyDescent_selected()));
+
+    // read APF and OPF file
+    QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
+    //QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
+    QString apfFile = ui->ICAOcodeLineEdit->text();
+    QString opfFile = ui->ICAOcodeLineEdit->text();
+
+    readAPFfile(path + apfFile + ".APF");
+    readOPFfile(path + opfFile + ".OPF");
 }
 
 Dialog::~Dialog()
@@ -346,6 +356,9 @@ void Dialog::readOPFfile(const QString &fileName)
     QTextStream stream(&file);
     QString line;
     QStringList opfList;
+
+    V_stall.clear(); C_D0.clear(); C_D2.clear(); PhaseChar.clear();
+
     int counter = 0;
     while(!stream.atEnd())
     {
@@ -456,7 +469,7 @@ void Dialog::readOPFfile(const QString &fileName)
     //qDebug() << "m_ref=" << m_ref << "m_min=" << m_min << "m_max=" << m_max << "m_pyld=" << m_pyld << "G_w=" << G_w;
     //qDebug() << "V_M0=" << V_MO << "M_M0=" << M_MO<< "h_M0=" << h_MO << "h_max=" << h_max << "G_t=" << G_t;
     //qDebug() << "S=" << S << "C_lbo=" << C_lbo << "k=" << k << "C_M16=" << C_M16;
-    qDebug() << "V_stall=" << V_stall << "C_D0=" << C_D0 << "C_D2=" << C_D2 << "PhaseChar=" << PhaseChar;
+    //qDebug() << "V_stall=" << V_stall << "C_D0=" << C_D0 << "C_D2=" << C_D2 << "PhaseChar=" << PhaseChar;
     //qDebug() << "C_D0deltaLDG=" << C_D0deltaLDG;
     //qDebug() << "C_Tc1=" << C_Tc1 << "C_Tc2=" << C_Tc2 << "C_Tc3=" << C_Tc3 << "C_Tc4=" << C_Tc4 << "C_Tc5=" << C_Tc5;
     //qDebug() << "C_Tdeslow=" << C_Tdeslow << "C_Tdeshigh=" << C_Tdeshigh << "H_pdes=" << H_pdes << "C_Tdesapp=" << C_Tdesapp << "C_Tdesld=" << C_Tdesld;
@@ -687,7 +700,7 @@ double Dialog::calculateDescentThrust(const double &altitude, const double &Thr_
     return Thr;
 }
 
-double Dialog::calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config)
+double Dialog::calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config, const bool &expedite)
 {
     // calculate drag
     // input weight [kg]; air density [kg/m^3]; TAS [m/s]; bank angle [°]; config [CR / AP / LD]
@@ -720,6 +733,11 @@ double Dialog::calculateDrag(const double &m, const double &ro, const double &vT
     }
 
     D = (CD * ro * vTAS*vTAS * S) / 2;
+
+    if(expedite)
+    {
+       D = D * C_des_exp;
+    }
 
     return D;
 }
@@ -1169,6 +1187,17 @@ void Dialog::run()
     double initHp = ui->Hp_0LineEdit->text().toDouble();
     double lastHp = ui->Hp_nLineEdit->text().toDouble();
     double delta_Hp = ui->delta_HpLineEdit->text().toDouble();
+
+    bool expedite;
+    if(ui->expediteChB->isChecked())
+    {
+        expedite = true;
+    }
+    else
+    {
+        expedite = false;
+    }
+
     double H_trop = mTOft(11000);
     bool minLimitReached = false;
     bool maxCASLimitReached = false;
@@ -1191,7 +1220,7 @@ void Dialog::run()
     // prevodova vyska - crossover altitude / transition altitude
     transAlt = transitionAltitude(knotsTOmps(initCAS),initMach); // vypocet crossover alt pre definovanu CAS a M
 
-    if(ui->CAS_MACH_rb->isChecked())
+    if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
     {
         for(int i=0; i<Hp_vect.size(); i++)
         {
@@ -1202,7 +1231,6 @@ void Dialog::run()
 
             double minAlt = qMin(H_trop, transAlt);
             double maxAlt = qMax(H_trop, transAlt);
-            qDebug() << H_trop << transAlt;
 
             if(Hp_vect.at(i) <= minAlt)
             {
@@ -1246,7 +1274,7 @@ void Dialog::run()
 
                 double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
                 Thr = calculateDescentThrust(Hp_vect.at(i),Thr_max_climb, flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 Thr_vect << Thr;
                 D_vect << D;
 
@@ -1370,7 +1398,7 @@ void Dialog::run()
 
                 double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
                 Thr = calculateDescentThrust(Hp_vect.at(i), Thr_max_climb, flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 Thr_vect << Thr;
                 D_vect << D;
 
@@ -1441,7 +1469,7 @@ void Dialog::run()
 
                 double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
                 Thr = calculateDescentThrust(Hp_vect.at(i), Thr_max_climb, flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 Thr_vect << Thr;
                 D_vect << D;
 
@@ -1514,7 +1542,7 @@ void Dialog::run()
             }
 
             //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
             D_vect << D;
 
             mach = TAStoM(TAS,T);
@@ -1626,7 +1654,7 @@ void Dialog::run()
                 }
 
                 //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 D_vect << D;
 
                 mach = TAStoM(TAS,T);
@@ -1760,7 +1788,7 @@ void Dialog::run()
                 }
 
                 //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 D_vect << D;
 
                 //ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
@@ -1842,7 +1870,7 @@ void Dialog::run()
                 }
 
                 //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig);
+                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 D_vect << D;
 
                 //ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
@@ -1881,8 +1909,8 @@ void Dialog::run()
         }
     }
 
-    //QString path = "C:/Users/KA/Desktop/outputfile.txt";
-    QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
+    QString path = "C:/Users/KA/Desktop/outputfile.txt";
+    //QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
 
     exportData(path,Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 }
@@ -1916,31 +1944,47 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
 void Dialog::parse_clicked()
 {
     //QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
-    QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
-    QString apfFile = ui->ICAOcodeLineEdit->text();
-    QString opfFile = ui->ICAOcodeLineEdit->text();
+    //QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
+    //QString apfFile = ui->ICAOcodeLineEdit->text();
+    //QString opfFile = ui->ICAOcodeLineEdit->text();
 
-    readAPFfile(path + apfFile + ".APF");
-    readOPFfile(path + opfFile + ".OPF");
+    //readAPFfile(path + apfFile + ".APF");
+    //readOPFfile(path + opfFile + ".OPF");
 
     run();
-    qDebug() << "EngineType =" << EngineType;
 }
 
 void Dialog::CASMACH_selected()
 {
     ui->GradientLineEdit->setEnabled(false);
     ui->ROCDLineEdit->setEnabled(false);
+    ui->expediteChB->setChecked(false);
+    ui->expediteChB->setEnabled(true);
 }
 
 void Dialog::ROCD_selected()
 {
     ui->ROCDLineEdit->setEnabled(true);
     ui->GradientLineEdit->setEnabled(false);
+    ui->expediteChB->setChecked(false);
+    ui->expediteChB->setEnabled(false);
 }
 
 void Dialog::Gradient_selected()
 {
     ui->GradientLineEdit->setEnabled(true);
     ui->ROCDLineEdit->setEnabled(false);
+    ui->expediteChB->setChecked(false);
+    ui->expediteChB->setEnabled(false);
+}
+
+void Dialog::EmergencyDescent_selected()
+{
+    ui->GradientLineEdit->setEnabled(false);
+    ui->ROCDLineEdit->setEnabled(false);
+    ui->expediteChB->setChecked(true);
+    ui->expediteChB->setEnabled(false);
+
+    ui->CASLineEdit->setText(QString::number(V_MO));
+    ui->MachLineEdit->setText(QString::number(M_MO));
 }

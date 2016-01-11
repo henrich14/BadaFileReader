@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'dialog.ui'
 **
-** Created: Wed 6. Jan 09:35:46 2016
+** Created: Mon 11. Jan 13:07:49 2016
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -14,6 +14,7 @@
 #include <QtGui/QAction>
 #include <QtGui/QApplication>
 #include <QtGui/QButtonGroup>
+#include <QtGui/QCheckBox>
 #include <QtGui/QDialog>
 #include <QtGui/QGroupBox>
 #include <QtGui/QHBoxLayout>
@@ -39,6 +40,8 @@ public:
     QRadioButton *CAS_MACH_rb;
     QRadioButton *ROCD_rb;
     QRadioButton *Gradient_rb;
+    QRadioButton *EmergencyDescent_rb;
+    QCheckBox *expediteChB;
     QHBoxLayout *horizontalLayout_6;
     QLabel *label_12;
     QLineEdit *ACMassLineEdit;
@@ -77,7 +80,7 @@ public:
     {
         if (Dialog->objectName().isEmpty())
             Dialog->setObjectName(QString::fromUtf8("Dialog"));
-        Dialog->resize(302, 297);
+        Dialog->resize(365, 318);
         verticalLayout = new QVBoxLayout(Dialog);
         verticalLayout->setSpacing(6);
         verticalLayout->setContentsMargins(11, 11, 11, 11);
@@ -120,8 +123,18 @@ public:
 
         horizontalLayout_9->addWidget(Gradient_rb);
 
+        EmergencyDescent_rb = new QRadioButton(groupBox);
+        EmergencyDescent_rb->setObjectName(QString::fromUtf8("EmergencyDescent_rb"));
+
+        horizontalLayout_9->addWidget(EmergencyDescent_rb);
+
 
         verticalLayout->addWidget(groupBox);
+
+        expediteChB = new QCheckBox(Dialog);
+        expediteChB->setObjectName(QString::fromUtf8("expediteChB"));
+
+        verticalLayout->addWidget(expediteChB);
 
         horizontalLayout_6 = new QHBoxLayout();
         horizontalLayout_6->setSpacing(6);
@@ -308,6 +321,8 @@ public:
         CAS_MACH_rb->setText(QApplication::translate("Dialog", "CAS/MACH", 0, QApplication::UnicodeUTF8));
         ROCD_rb->setText(QApplication::translate("Dialog", "ROCD", 0, QApplication::UnicodeUTF8));
         Gradient_rb->setText(QApplication::translate("Dialog", "Gradient", 0, QApplication::UnicodeUTF8));
+        EmergencyDescent_rb->setText(QApplication::translate("Dialog", "Emergency descent", 0, QApplication::UnicodeUTF8));
+        expediteChB->setText(QApplication::translate("Dialog", "expedite descent", 0, QApplication::UnicodeUTF8));
         label_12->setText(QApplication::translate("Dialog", "ACMass", 0, QApplication::UnicodeUTF8));
         label_13->setText(QApplication::translate("Dialog", "[kg]", 0, QApplication::UnicodeUTF8));
         label_2->setText(QApplication::translate("Dialog", "CAS", 0, QApplication::UnicodeUTF8));
