@@ -1165,7 +1165,7 @@ double Dialog::NMtom(const double &NM)
 
 double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor)
 {
-    // calculate the ROCD  - speed and throttle controlled, speed is maintained at some constant CAS of M
+    // calculate the ROCD  - speed and throttle controlled, speed is maintained at some constant CAS or M
     // input phase [CRUISE / APPROACH / LANDING];
     // input factor [[CONSTANT_MACH_ABOVE_TROPOPAUSE / CONSTANT_MACH_BELOW_TROPOPAUSE / CONSTANT_CAS_BELOW_TROPOPAUSE / CONSTANT_CAS_ABOVE_TROPOPAUSE / ACCELERATION_IN_DESCENT / DECELERATION_IN_DECENT]]
     // output ROCD [m/s]
