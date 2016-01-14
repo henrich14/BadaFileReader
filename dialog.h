@@ -8,6 +8,8 @@
 #include <QDebug>
 #include <QHash>
 #include <QTextStream>
+#include <QTime>
+#include <QTimer>
 
 namespace Ui {
 class Dialog;
@@ -66,9 +68,17 @@ public:
     double ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor);
     void run();
     void exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH, const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance, const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM);
+    QVector<double> BADAcalc(const double &Hp, const double &vCAS, const double &ACMass, const double &time_c);
     
 private:
     Ui::Dialog *ui;
+
+    QTimer *timer;
+    double timer_const;
+
+    double Hp_actual;
+    double CAS_actual;
+    double ACMass_actual;
 
     QString companyName;
     QHash<QString, int> Vcl1;
@@ -135,6 +145,7 @@ private slots:
     void ROCD_selected();
     void Gradient_selected();
     void EmergencyDescent_selected();
+    void TimeOut();
 };
 
 #endif // DIALOG_H

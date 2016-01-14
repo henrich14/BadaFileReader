@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'dialog.h'
 **
-** Created: Mon 11. Jan 13:08:18 2016
+** Created: Thu 14. Jan 16:16:51 2016
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,7 +23,7 @@ static const uint qt_meta_data_Dialog[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-       5,   14, // methods
+       6,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -36,6 +36,7 @@ static const uint qt_meta_data_Dialog[] = {
       43,    7,    7,    7, 0x08,
       59,    7,    7,    7, 0x08,
       79,    7,    7,    7, 0x08,
+     107,    7,    7,    7, 0x08,
 
        0        // eod
 };
@@ -43,7 +44,7 @@ static const uint qt_meta_data_Dialog[] = {
 static const char qt_meta_stringdata_Dialog[] = {
     "Dialog\0\0parse_clicked()\0CASMACH_selected()\0"
     "ROCD_selected()\0Gradient_selected()\0"
-    "EmergencyDescent_selected()\0"
+    "EmergencyDescent_selected()\0TimeOut()\0"
 };
 
 void Dialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -57,6 +58,7 @@ void Dialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void
         case 2: _t->ROCD_selected(); break;
         case 3: _t->Gradient_selected(); break;
         case 4: _t->EmergencyDescent_selected(); break;
+        case 5: _t->TimeOut(); break;
         default: ;
         }
     }
@@ -95,9 +97,9 @@ int Dialog::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 5)
+        if (_id < 6)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 5;
+        _id -= 6;
     }
     return _id;
 }

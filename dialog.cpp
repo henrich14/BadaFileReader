@@ -89,11 +89,14 @@ Dialog::Dialog(QWidget *parent) :
     ui->ROCDLineEdit->setEnabled(false);
     ui->GradientLineEdit->setEnabled(false);
 
+    timer = new QTimer(this);
+
     connect(ui->parsePushButton, SIGNAL(clicked()), this, SLOT(parse_clicked()));
     connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(CASMACH_selected()));
     connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
     connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(Gradient_selected()));
     connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(EmergencyDescent_selected()));
+    connect(timer, SIGNAL(timeout()), this, SLOT(TimeOut()));
 
     // read APF and OPF file
     QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
@@ -103,6 +106,19 @@ Dialog::Dialog(QWidget *parent) :
 
     readAPFfile(path + apfFile + ".APF");
     readOPFfile(path + opfFile + ".OPF");
+
+    timer_const = 1;    // timer in [s]
+    Hp_actual = ui->Hp_0LineEdit->text().toDouble();
+    CAS_actual = ui->CASLineEdit->text().toDouble();
+    ACMass_actual = ui->ACMassLineEdit->text().toDouble();
+    //double initROCD = ui->ROCDLineEdit->text().toDouble();
+    //double initGrad = ui->GradientLineEdit->text().toDouble();
+    //double initMach = ui->MachLineEdit->text().toDouble();
+    //double lastHp = ui->Hp_nLineEdit->text().toDouble();
+    //double delta_Hp = ui->delta_HpLineEdit->text().toDouble();
+
+
+    timer->start(timer_const*1000);
 }
 
 Dialog::~Dialog()
@@ -1941,6 +1957,52 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
+QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &ACMass, const double &time_c)
+{
+    QVector<double> outVect;
+
+    double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight;
+    QString flightConfig;
+
+    bool expedite = false;
+
+    T = temperatureDetermination(ftTOm(Hp));
+    p = airPressureDetermination(ftTOm(Hp));
+    ro = airDensityDetermination(T,p);
+
+    CAS = vCAS;                          // knots
+    TAS = CAStoTAS(knotsTOmps(CAS),p,ro);   // [m/s]
+    flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+
+    Thr_max_climb = calculateMaxClimbThrust(Hp, mpsTOknots(TAS), EngineType);
+    Thr = calculateDescentThrust(Hp,Thr_max_climb, flightConfig);
+    D = calculateDrag(ACMass, ro, TAS, 0, flightConfig, expedite);
+
+    mach = TAStoM(TAS,T);
+    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+
+    ROCD = mpsTOftpmin(ROCDcalc(T, TAS, Thr, D, ACMass, fM));
+
+
+    time = time_c;   // hodnota timera [s]
+    dist = getFlightDistance(time, TAS); // [m]
+    double delta_Hp = (ROCD / 60) * time;  // [ft]
+
+    grad = getGradient(ftTOm(delta_Hp),dist);
+
+    FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+
+    FWeight = fuelWeight(FFlow, time);  // [kg]
+    double actualACMass = ACMass - FWeight;    // [kg]
+
+    outVect.clear();
+    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << actualACMass;
+
+    //qDebug() << "Hp =" << Hp << "ft " << "ROCD =" << ROCD << "ft/min" << actualACMass;
+
+    return outVect;
+}
+
 void Dialog::parse_clicked()
 {
     //QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
@@ -1987,4 +2049,18 @@ void Dialog::EmergencyDescent_selected()
 
     ui->CASLineEdit->setText(QString::number(V_MO));
     ui->MachLineEdit->setText(QString::number(M_MO));
+}
+
+void Dialog::TimeOut()
+{
+    QVector<double> vect = BADAcalc(Hp_actual, CAS_actual, ACMass_actual, timer_const);
+    Hp_actual += vect[13];
+    ACMass_actual = vect[17];
+
+
+    qDebug() << "Hp_actual =" << vect[0] << "T =" << vect[1] << "p =" << vect[2] << "ro =" << vect[3] << "CAS =" << vect[4] << "TAS =" << vect[5] << "Thr =" << vect[6] << "D =" << vect[7] << "mach =" << vect[8]
+                << "fM =" << vect[9] << "ROCD =" << vect[10] << "time =" << vect[11] << "dist =" << vect[12] << "delta_Hp =" << vect[13] << "grad =" << vect[14] << "FFlow =" << vect[15]
+                   << "FWeigth =" << vect[16] << "ActualACMass =" << vect[17];
+
+
 }
