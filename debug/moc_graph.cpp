@@ -1,7 +1,11 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'graph.h'
 **
+<<<<<<< HEAD
 ** Created: Sat 23. Jan 20:48:14 2016
+=======
+** Created: Fri 22. Jan 15:04:55 2016
+>>>>>>> 729464c1310e14fb2b48a708c7f5ec0d9e3fdb52
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
