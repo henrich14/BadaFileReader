@@ -5,14 +5,18 @@
 #-------------------------------------------------
 
 QT       += core gui
+CONFIG   += qwt
 
 TARGET = BADAFileReader
 TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        dialog.cpp
+        dialog.cpp \
+    graph.cpp
 
-HEADERS  += dialog.h
+HEADERS  += dialog.h \
+    graph.h
 
-FORMS    += dialog.ui
+FORMS    += dialog.ui \
+    graph.ui

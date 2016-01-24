@@ -10,6 +10,7 @@
 #include <QTextStream>
 #include <QTime>
 #include <QTimer>
+#include "graph.h"
 
 namespace Ui {
 class Dialog;
@@ -33,6 +34,7 @@ public:
     double TAStoM(const double &vTAS, const double &temperature);
     double transitionAltitude(const double &vCAS, const double &vM);
 
+    void readSynomymFile();
     void readAPFfile(const QString &fileName);
     void readOPFfile(const QString &fileName);
     QStringList parseLine(const QString &line);
@@ -69,9 +71,15 @@ public:
     void run();
     void exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH, const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance, const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM);
     QVector<double> BADAcalc(const double &Hp, const double &vCAS, const double &ACMass, const double &time_c);
+
+signals:
+    void send_data(const QVector<double> &DATA);
+    void start_signal();
     
 private:
     Ui::Dialog *ui;
+
+    Graph *graphWindow;
 
     QTimer *timer;
     double timer_const;
@@ -146,6 +154,9 @@ private slots:
     void Gradient_selected();
     void EmergencyDescent_selected();
     void TimeOut();
+    void start_clicked();
+    void stop_clicked();
+    void AircraftChanged(const QString &ICAOFileCode);
 };
 
 #endif // DIALOG_H

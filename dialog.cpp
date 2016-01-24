@@ -74,9 +74,12 @@ Dialog::Dialog(QWidget *parent) :
     ui(new Ui::Dialog)
 {
     ui->setupUi(this);
+    graphWindow = new Graph(this);
+    graphWindow->setWindowTitle("Time Intergation Graphs");
+
+    readSynomymFile();
 
     ui->CAS_MACH_rb->setChecked(true);
-    ui->ICAOcodeLineEdit->setText("B738__");
     ui->ACMassLineEdit->setText("65300");
     ui->CASLineEdit->setText("290");
     ui->ROCDLineEdit->setText("-1500");
@@ -96,29 +99,20 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
     connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(Gradient_selected()));
     connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(EmergencyDescent_selected()));
+    connect(ui->startPushButton, SIGNAL(clicked()), this, SLOT(start_clicked()));
+    connect(ui->stopPushButton, SIGNAL(clicked()), this, SLOT(stop_clicked()));
+    connect(ui->ICAOcomboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(AircraftChanged(QString)));
     connect(timer, SIGNAL(timeout()), this, SLOT(TimeOut()));
 
-    // read APF and OPF file
-    QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
-    //QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
-    QString apfFile = ui->ICAOcodeLineEdit->text();
-    QString opfFile = ui->ICAOcodeLineEdit->text();
+    connect(this, SIGNAL(send_data(QVector<double>)), graphWindow, SLOT(receive_data(QVector<double>)));
+    connect(this, SIGNAL(start_signal()), graphWindow, SLOT(startClicked_slot()));
 
-    readAPFfile(path + apfFile + ".APF");
-    readOPFfile(path + opfFile + ".OPF");
+    ui->ICAOcomboBox->setCurrentIndex(45);
 
     timer_const = 1;    // timer in [s]
     Hp_actual = ui->Hp_0LineEdit->text().toDouble();
     CAS_actual = ui->CASLineEdit->text().toDouble();
     ACMass_actual = ui->ACMassLineEdit->text().toDouble();
-    //double initROCD = ui->ROCDLineEdit->text().toDouble();
-    //double initGrad = ui->GradientLineEdit->text().toDouble();
-    //double initMach = ui->MachLineEdit->text().toDouble();
-    //double lastHp = ui->Hp_nLineEdit->text().toDouble();
-    //double delta_Hp = ui->delta_HpLineEdit->text().toDouble();
-
-
-    timer->start(timer_const*1000);
 }
 
 Dialog::~Dialog()
@@ -277,6 +271,50 @@ double Dialog::transitionAltitude(const double &vCAS, const double &vM)
     Hp_trans = (1000/(0.3048*6.5)) * (T0*(1-theta_trans));
 
     return Hp_trans;
+}
+
+void Dialog::readSynomymFile()
+{
+    QDir dir;
+    QFile file(dir.currentPath() + "/Release Files/SYNONYM.NEW");
+
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "Cannot open file: " << file.fileName() << " for reading!";
+    }
+
+    QTextStream stream(&file);
+
+    QStringList SupporTypeFieldList;
+    QStringList AircraftCodeFieldList;
+    QStringList ManufacturerFieldList;
+    QStringList NameOrModelFieldList;
+    QStringList FileFieldList;
+    QStringList ICAOFieldList;
+
+
+    while(!stream.atEnd())
+    {
+        QString line = stream.readLine();
+
+        if(line.mid(0,2) == "CD")
+        {
+            SupporTypeFieldList.append(line.mid(3,1));
+            AircraftCodeFieldList.append(line.mid(5,4).simplified());
+            ManufacturerFieldList.append(line.mid(9,20).simplified());
+            NameOrModelFieldList.append(line.mid(29,25).simplified());
+
+            if(!FileFieldList.contains(line.mid(57,6)))
+            {
+                FileFieldList.append(line.mid(57,6));
+            }
+
+            ICAOFieldList.append(line.mid(65,1));
+        }
+    }
+
+    FileFieldList.sort();
+    ui->ICAOcomboBox->addItems(FileFieldList);
 }
 
 void Dialog::readAPFfile(const QString &fileName)
@@ -1925,10 +1963,10 @@ void Dialog::run()
         }
     }
 
-    QString path = "C:/Users/KA/Desktop/outputfile.txt";
-    //QString path = "C:/Users/Henrich/Desktop/outputfile.txt";
+    QDir dir;
+    QString path = dir.currentPath() + "/outputfile.txt";
 
-    exportData(path,Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
+    exportData(path, Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 }
 
 void Dialog::exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH,
@@ -1943,14 +1981,14 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
 
     QTextStream stream(&file);
 
-    stream << "Hp[ft]\t\tACMass[kg]\t\tCAS[kt]\t\tTAS[kt]\t\tM[-]\t\tROCD[ft/min]\t\tGrad[deg]\t\tFuelFlow[kg/s]\t\tFuel[kg]\t\tTime[s]\t\tDistance[NM]"
-              "\t\tThr[N]\t\tD[N]\t\tfM[-]" << "\n";
+    stream << "Hp[ft]\tACMass[kg]\tCAS[kt]\tTAS[kt]\tM[-]\tROCD[ft/min]\tGrad[deg]\tFuelFlow[kg/s]\tFuel[kg]\tTime[s]\tDistance[NM]"
+              "\tThr[N]\tD[N]\tfM[-]" << "\n";
 
     for(int i=0; i<Hp.size(); i++)
     {
-        stream << Hp.at(i) << "\t\t" << ACMass.at(i) << "\t\t" << CAS.at(i) << "\t\t" << TAS.at(i) << "\t\t" << MACH.at(i) << "\t\t"
-               << ROCD.at(i) << "\t\t" << gradient.at(i) << "\t\t" << FuelFlow.at(i) << "\t\t" << Fuel.at(i) << "\t\t" << Time.at(i) << "\t\t" << Distance.at(i) << "\t\t"
-               << Thr.at(i) << "\t\t" << D.at(i) << "\t\t" << fM.at(i) << "\n";
+        stream << Hp.at(i) << "\t" << ACMass.at(i) << "\t" << CAS.at(i) << "\t" << TAS.at(i) << "\t" << MACH.at(i) << "\t"
+               << ROCD.at(i) << "\t" << gradient.at(i) << "\t" << FuelFlow.at(i) << "\t" << Fuel.at(i) << "\t"<< Time.at(i) << "\t" << Distance.at(i) << "\t"
+               << Thr.at(i) << "\t" << D.at(i) << "\t" << fM.at(i) << "\n";
     }
 
     qDebug() << "Data successfully saved to:" << file.fileName();
@@ -2005,14 +2043,6 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
 void Dialog::parse_clicked()
 {
-    //QString path = "C:/Users/KA/Desktop/BADA Files/Release Files/";
-    //QString path = "C:/Users/Henrich/Desktop/BADA Files/Release Files/";
-    //QString apfFile = ui->ICAOcodeLineEdit->text();
-    //QString opfFile = ui->ICAOcodeLineEdit->text();
-
-    //readAPFfile(path + apfFile + ".APF");
-    //readOPFfile(path + opfFile + ".OPF");
-
     run();
 }
 
@@ -2058,9 +2088,41 @@ void Dialog::TimeOut()
     ACMass_actual = vect[17];
 
 
-    qDebug() << "Hp_actual =" << vect[0] << "T =" << vect[1] << "p =" << vect[2] << "ro =" << vect[3] << "CAS =" << vect[4] << "TAS =" << vect[5] << "Thr =" << vect[6] << "D =" << vect[7] << "mach =" << vect[8]
-                << "fM =" << vect[9] << "ROCD =" << vect[10] << "time =" << vect[11] << "dist =" << vect[12] << "delta_Hp =" << vect[13] << "grad =" << vect[14] << "FFlow =" << vect[15]
-                   << "FWeigth =" << vect[16] << "ActualACMass =" << vect[17];
+    emit send_data(vect);   // send data from 1 calculation to graph dialog window
+}
 
+void Dialog::start_clicked()
+{
+    graphWindow->show();
 
+    Hp_actual = ui->Hp_0LineEdit->text().toDouble();
+    CAS_actual = ui->CASLineEdit->text().toDouble();
+    ACMass_actual = ui->ACMassLineEdit->text().toDouble();
+
+    timer->start(timer_const*1000);
+
+    emit start_signal();
+}
+
+void Dialog::stop_clicked()
+{
+    timer->stop();
+}
+
+void Dialog::AircraftChanged(const QString &ICAOFileCode)
+{
+    QDir dir;
+    readAPFfile(dir.currentPath() + "/Release Files/" + ICAOFileCode + ".APF");
+    readOPFfile(dir.currentPath() + "/Release Files/" + ICAOFileCode + ".OPF");
+
+    ui->EngineLabel->setText(EngineType);
+    ui->VmoLabel->setText(QString::number(V_MO));
+    ui->HmoLabel->setText(QString::number(h_MO));
+    ui->MmoLabel->setText(QString::number(M_MO));
+    ui->MassLowLabel->setText(QString::number(m_min));
+    ui->MassNomLabel->setText(QString::number(m_ref));
+    ui->MassHighLabel->setText(QString::number(m_max));
+    ui->WakeLabel->setText(WakeCat);
+    ui->WingSpanLabel->setText(QString::number(span));
+    ui->ACLengthLabel->setText(QString::number(length));
 }
