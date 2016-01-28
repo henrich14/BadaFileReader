@@ -108,11 +108,6 @@ Dialog::Dialog(QWidget *parent) :
     connect(this, SIGNAL(start_signal()), graphWindow, SLOT(startClicked_slot()));
 
     ui->ICAOcomboBox->setCurrentIndex(45);
-
-    timer_const = 1;    // timer in [s]
-    Hp_actual = ui->Hp_0LineEdit->text().toDouble();
-    CAS_init = ui->CASLineEdit->text().toDouble();
-    ACMass_actual = ui->ACMassLineEdit->text().toDouble();
 }
 
 Dialog::~Dialog()
@@ -1232,7 +1227,7 @@ double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrus
 }
 
 void Dialog::run()
-{
+{    
     double actualACMass = ui->ACMassLineEdit->text().toDouble();
     double initCAS = ui->CASLineEdit->text().toDouble();
     double initROCD = ui->ROCDLineEdit->text().toDouble();
@@ -1595,7 +1590,6 @@ void Dialog::run()
                                      + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
             }
 
-            //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
             D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
             D_vect << D;
 
@@ -1616,7 +1610,6 @@ void Dialog::run()
             else if(Hp_vect.at(i) > minAlt && Hp_vect.at(i) < maxAlt)
             {
                 // tu sa udrziava konst mach a pocita sa CAS
-
                 if(minAlt == transAlt)
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
@@ -1716,18 +1709,8 @@ void Dialog::run()
                 fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
                 fM_vect << fM;
 
-                //ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
-                //ROCD_vect << mpsTOftpmin(ROCD);
-
-                //time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
-                //TIME_vect << time;
-
-                //dist = getFlightDistance(time, TAS);
-                //DIST_vect << mtoNM(dist);
-
-                //grad = getGradient(ftTOm(delta_Hp),dist);
                 GRAD_vect << initGrad;
-                dist = ftTOm(delta_Hp)/qTan((initGrad/180)*PI);
+                dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
                 DIST_vect << mtoNM(dist);
 
                 time = dist / TAS;
@@ -1845,20 +1828,8 @@ void Dialog::run()
                 D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 D_vect << D;
 
-                //ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
-                //ROCD_vect << mpsTOftpmin(ROCD);
-
-                //time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
-                //TIME_vect << time;
-
-                //dist = getFlightDistance(time, TAS);
-                //DIST_vect << mtoNM(dist);
-
-                //grad = getGradient(ftTOm(delta_Hp),dist);
-                //GRAD_vect << grad;
-
                 GRAD_vect << initGrad;
-                dist = ftTOm(delta_Hp)/qTan((initGrad/180)*PI);
+                dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
                 DIST_vect << mtoNM(dist);
 
                 time = dist / TAS;
@@ -1923,24 +1894,11 @@ void Dialog::run()
                                          + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
                 }
 
-                //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
                 D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
                 D_vect << D;
 
-                //ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
-                //ROCD_vect << mpsTOftpmin(ROCD);
-
-                //time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
-                //TIME_vect << time;
-
-                //dist = getFlightDistance(time, TAS);
-                //DIST_vect << mtoNM(dist);
-
-                //grad = getGradient(ftTOm(delta_Hp),dist);
-                //GRAD_vect << grad;
-
                 GRAD_vect << initGrad;
-                dist = ftTOm(delta_Hp)/qTan((initGrad/180)*PI);
+                dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
                 DIST_vect << mtoNM(dist);
 
                 time = dist / TAS;
@@ -1995,7 +1953,7 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &ACMass, const double &time_c)
+QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &time_c)
 {
     QVector<double> outVect;
 
@@ -2021,26 +1979,6 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             CAS = vCAS;                             // [kt]
             TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
             flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
-
-            Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
-            Thr = calculateDescentThrust(Hp,Thr_max_climb, flightConfig);
-            D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
-
-            mach = TAStoM(knotsTOmps(TAS),T);
-            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
-
-            ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
-
-            time = time_c;   // hodnota timera [s]
-            dist = getFlightDistance(time, knotsTOmps(TAS)); // [m]
-            delta_Hp = (ROCD / 60) * time;  // [ft]
-
-            grad = getGradient(ftTOm(delta_Hp),dist);
-
-            FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
-
-            FWeight = fuelWeight(FFlow, time);  // [kg]
-            actualACMass = ACMass - FWeight;    // [kg]
         }
 
         else if(Hp > minAlt && Hp < maxAlt)
@@ -2064,23 +2002,6 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
                 mach = TAStoM(knotsTOmps(TAS),T);
                 fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
             }
-
-            Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
-            Thr = calculateDescentThrust(Hp, Thr_max_climb, flightConfig);
-            D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
-
-            ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
-
-            time = time_c;  // hodnota timera [s]
-            dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
-            delta_Hp = (ROCD / 60) * time;  // [ft]
-
-            grad = getGradient(ftTOm(delta_Hp),dist);
-
-            FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
-
-            FWeight = fuelWeight(FFlow, time);  // [kg]
-            actualACMass = ACMass - FWeight;    // [kg]
         }
 
         else if(Hp >= maxAlt)
@@ -2092,25 +2013,25 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             TAS = mpsTOknots(MtoTAS(mach,T));                   // [kt]
             CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));   // [kt]
 
-            flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
-
-            Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
-            Thr = calculateDescentThrust(Hp, Thr_max_climb, flightConfig);
-            D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
-
-            ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
-
-            time = time_c;  // hodnota timera [s]
-            dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
-            delta_Hp = (ROCD / 60) * time;  // [ft]
-
-            grad = getGradient(ftTOm(delta_Hp),dist);
-
-            FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
-
-            FWeight = fuelWeight(FFlow, time);  // [kg]
-            actualACMass = ACMass - FWeight;    // [kg]
+            flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);  
         }
+
+        Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
+        Thr = calculateDescentThrust(Hp, Thr_max_climb, flightConfig);
+        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+
+        ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
+
+        time = time_c;  // hodnota timera [s]
+        dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
+        delta_Hp = (ROCD / 60) * time;  // [ft]
+
+        grad = getGradient(ftTOm(delta_Hp),dist);
+
+        FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+
+        FWeight = fuelWeight(FFlow, time);  // [kg]
+        actualACMass = ACMass - FWeight;    // [kg]
 
     }
     else if(ui->ROCD_rb->isChecked()) // Define ROCD and CAS and calculate the rest of flight parameters
@@ -2144,10 +2065,10 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         }
 
         ROCD = vROCD;
-        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/TAS) + D;
+        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;
 
         time = time_c;  // hodnota timera [s]
-        dist = getFlightDistance(time, knotsTOmps(TAS));
+        dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
         delta_Hp = (ROCD / 60) * time;  // [ft]
         grad = getGradient(ftTOm(delta_Hp),dist);
 
@@ -2158,10 +2079,68 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
     }
 
-    outVect.clear();
-    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << actualACMass;
+    else if(ui->Gradient_rb->isChecked())
+    {
+        grad = vGrad;
 
-    //qDebug() << "Hp =" << Hp << "ft " << "ROCD =" << ROCD << "ft/min" << actualACMass;
+        if(Hp <= minAlt)
+        {
+            CAS = vCAS;                                         // [kt]
+            TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
+
+            mach = TAStoM(knotsTOmps(TAS),T);
+            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+        }
+        else if(Hp > minAlt && Hp < maxAlt)
+        {
+            if(minAlt == transAlt)
+            {
+                mach = vMach;
+                TAS = mpsTOknots(MtoTAS(mach,T));                    // [kt]
+                CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));    // [kt]
+
+                fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+
+            }
+            else if(minAlt == Hp_trop)
+            {
+                CAS = vCAS;                                         // [kt]
+                TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
+                mach = TAStoM(knotsTOmps(TAS),T);
+
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+            }
+
+        }
+        else if(Hp >= maxAlt)
+        {
+            mach = vMach;
+            fM = calculateShareFactor(mach, T, "CONSTANT_MACH_ABOVE_TROPOPAUSE");
+
+            TAS = mpsTOknots(MtoTAS(mach,T));                    // [kt]
+            CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));    // [kt]
+
+        }
+
+        flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+
+        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+
+        time = time_c;  // hodnota timera [s]
+        dist = time * knotsTOmps(TAS);  // [m]
+
+        delta_Hp = mTOft(qTan((grad/180)*PI) * dist);   // [ft]
+        ROCD = (delta_Hp/time) * 60;   // [ft/min]
+
+        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+        FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, false) / 60;  // in [kg/s]
+
+        FWeight = fuelWeight(FFlow, time);  // [kg]
+        actualACMass = ACMass - FWeight;    // [kg]
+    }
+
+    outVect.clear();
+    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass;
 
     return outVect;
 }
@@ -2208,9 +2187,9 @@ void Dialog::EmergencyDescent_selected()
 
 void Dialog::TimeOut()
 {
-    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, ACMass_actual, timer_const);
+    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, timer_const);
     Hp_actual += vect[13];
-    ACMass_actual = vect[17];
+    ACMass_actual = vect[18];
 
     emit send_data(vect);   // send data from 1 calculation to graph dialog window
 }
@@ -2219,10 +2198,13 @@ void Dialog::start_clicked()
 {
     graphWindow->show();
 
+    timer_const = 1;    // timer in [s]
+
     Hp_actual = ui->Hp_0LineEdit->text().toDouble();        // [ft]
     CAS_init = ui->CASLineEdit->text().toDouble();          // [kt]
     MACH_init = ui->MachLineEdit->text().toDouble();        // [-]
     ROCD_init = ui->ROCDLineEdit->text().toDouble();        // [ft/min]
+    Grad_init = ui->GradientLineEdit->text().toDouble();    // [°]
     ACMass_actual = ui->ACMassLineEdit->text().toDouble();  // [kg]
 
     timer->start(timer_const*1000);
