@@ -1,15 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'dialog.h'
 **
-<<<<<<< HEAD
-<<<<<<< HEAD
-** Created: Sat 23. Jan 20:48:12 2016
-=======
-** Created: Fri 22. Jan 15:04:54 2016
->>>>>>> 729464c1310e14fb2b48a708c7f5ec0d9e3fdb52
-=======
-** Created: Fri 22. Jan 15:04:54 2016
->>>>>>> 729464c1310e14fb2b48a708c7f5ec0d9e3fdb52
+** Created: Thu 28. Jan 12:13:23 2016
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!

@@ -111,7 +111,7 @@ Dialog::Dialog(QWidget *parent) :
 
     timer_const = 1;    // timer in [s]
     Hp_actual = ui->Hp_0LineEdit->text().toDouble();
-    CAS_actual = ui->CASLineEdit->text().toDouble();
+    CAS_init = ui->CASLineEdit->text().toDouble();
     ACMass_actual = ui->ACMassLineEdit->text().toDouble();
 }
 
@@ -1252,7 +1252,7 @@ void Dialog::run()
         expedite = false;
     }
 
-    double H_trop = mTOft(11000);
+    //double H_trop = mTOft(11000);
     bool minLimitReached = false;
     bool maxCASLimitReached = false;
     bool maxAltLimitReached = false;
@@ -1283,8 +1283,8 @@ void Dialog::run()
             p = airPressureDetermination(ftTOm(Hp_vect.at(i)));
             ro = airDensityDetermination(T,p);
 
-            double minAlt = qMin(H_trop, transAlt);
-            double maxAlt = qMax(H_trop, transAlt);
+            double minAlt = qMin(Hp_trop, transAlt);
+            double maxAlt = qMax(Hp_trop, transAlt);
 
             if(Hp_vect.at(i) <= minAlt)
             {
@@ -1404,7 +1404,7 @@ void Dialog::run()
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
                     fM_vect << fM;
                 }
-                else if(minAlt == H_trop)
+                else if(minAlt == Hp_trop)
                 {
                     CAS = initCAS;
                     CAS_vect << CAS;
@@ -1603,9 +1603,9 @@ void Dialog::run()
             MACH_vect << mach;
 
 
-            // need to know if H_trop is under transition Altitude or it is the other way
-            double minAlt = qMin(H_trop, transAlt);
-            double maxAlt = qMax(H_trop, transAlt);
+            // need to know if Hp_trop is under transition Altitude or it is the other way
+            double minAlt = qMin(Hp_trop, transAlt);
+            double maxAlt = qMax(Hp_trop, transAlt);
 
             if(Hp_vect.at(i) <= minAlt)
             {
@@ -1621,7 +1621,7 @@ void Dialog::run()
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
                 }
-                else if(minAlt == H_trop)
+                else if(minAlt == Hp_trop)
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
                 }
@@ -1664,8 +1664,8 @@ void Dialog::run()
             p = airPressureDetermination(ftTOm(Hp_vect.at(i)));
             ro = airDensityDetermination(T,p);
 
-            double minAlt = qMin(H_trop, transAlt);
-            double maxAlt = qMax(H_trop, transAlt);
+            double minAlt = qMin(Hp_trop, transAlt);
+            double maxAlt = qMax(Hp_trop, transAlt);
 
             if(Hp_vect.at(i) <= minAlt)
             {
@@ -1795,7 +1795,7 @@ void Dialog::run()
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
                     fM_vect << fM;
                 }
-                else if(minAlt == H_trop)
+                else if(minAlt == Hp_trop)
                 {
                     CAS = initCAS;
                     CAS_vect << CAS;
@@ -1995,43 +1995,168 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &ACMass, const double &time_c)
+QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &ACMass, const double &time_c)
 {
     QVector<double> outVect;
 
-    double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight;
+    double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp;
     QString flightConfig;
-
     bool expedite = false;
 
-    T = temperatureDetermination(ftTOm(Hp));
-    p = airPressureDetermination(ftTOm(Hp));
-    ro = airDensityDetermination(T,p);
+    T = temperatureDetermination(ftTOm(Hp));    // Temperature based on altitude
+    p = airPressureDetermination(ftTOm(Hp));    // pressure based on altitude
+    ro = airDensityDetermination(T,p);          // density based on altitude
 
-    CAS = vCAS;                          // knots
-    TAS = CAStoTAS(knotsTOmps(CAS),p,ro);   // [m/s]
-    flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+    // prevodova vyska - crossover altitude / transition altitude
+    transAlt = transitionAltitude(knotsTOmps(vCAS),vMach); // vypocet crossover alt pre definovanu CAS a M
 
-    Thr_max_climb = calculateMaxClimbThrust(Hp, mpsTOknots(TAS), EngineType);
-    Thr = calculateDescentThrust(Hp,Thr_max_climb, flightConfig);
-    D = calculateDrag(ACMass, ro, TAS, 0, flightConfig, expedite);
+    double minAlt = qMin(Hp_trop, transAlt);    // calcualtion of smaller value of altitude between Hp_trop and TransAlt
+    double maxAlt = qMax(Hp_trop, transAlt);    // calcualtion of greater value of altitude between Hp_trop and TransAlt
 
-    mach = TAStoM(TAS,T);
-    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+    if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
+    {
+        if(Hp <= minAlt)
+        {
+            // tu sa udrziava konst CAS a pocita sa mach
+            CAS = vCAS;                             // [kt]
+            TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
+            flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
 
-    ROCD = mpsTOftpmin(ROCDcalc(T, TAS, Thr, D, ACMass, fM));
+            Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
+            Thr = calculateDescentThrust(Hp,Thr_max_climb, flightConfig);
+            D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
 
+            mach = TAStoM(knotsTOmps(TAS),T);
+            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
 
-    time = time_c;   // hodnota timera [s]
-    dist = getFlightDistance(time, TAS); // [m]
-    double delta_Hp = (ROCD / 60) * time;  // [ft]
+            ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
 
-    grad = getGradient(ftTOm(delta_Hp),dist);
+            time = time_c;   // hodnota timera [s]
+            dist = getFlightDistance(time, knotsTOmps(TAS)); // [m]
+            delta_Hp = (ROCD / 60) * time;  // [ft]
 
-    FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+            grad = getGradient(ftTOm(delta_Hp),dist);
 
-    FWeight = fuelWeight(FFlow, time);  // [kg]
-    double actualACMass = ACMass - FWeight;    // [kg]
+            FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+
+            FWeight = fuelWeight(FFlow, time);  // [kg]
+            actualACMass = ACMass - FWeight;    // [kg]
+        }
+
+        else if(Hp > minAlt && Hp < maxAlt)
+        {
+            if(minAlt == transAlt)
+            {
+                // tu sa udrziava konst mach a pocita sa CAS
+                mach = vMach;
+                TAS = mpsTOknots(MtoTAS(mach,T));                   // [kt]
+                CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));   // [kt]
+                flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+                fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+            }
+
+            else if(minAlt == Hp_trop)
+            {
+                // tu sa udrziava konst CAS a pocita sa mach
+                CAS = vCAS;                             // [kt]
+                TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
+                flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+                mach = TAStoM(knotsTOmps(TAS),T);
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+            }
+
+            Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
+            Thr = calculateDescentThrust(Hp, Thr_max_climb, flightConfig);
+            D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+
+            ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
+
+            time = time_c;  // hodnota timera [s]
+            dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
+            delta_Hp = (ROCD / 60) * time;  // [ft]
+
+            grad = getGradient(ftTOm(delta_Hp),dist);
+
+            FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+
+            FWeight = fuelWeight(FFlow, time);  // [kg]
+            actualACMass = ACMass - FWeight;    // [kg]
+        }
+
+        else if(Hp >= maxAlt)
+        {
+            // tu sa udrziva konst mach a pocita sa CAS
+            mach = vMach;
+            fM = calculateShareFactor(mach, T, "CONSTANT_MACH_ABOVE_TROPOPAUSE");
+
+            TAS = mpsTOknots(MtoTAS(mach,T));                   // [kt]
+            CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));   // [kt]
+
+            flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+
+            Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
+            Thr = calculateDescentThrust(Hp, Thr_max_climb, flightConfig);
+            D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+
+            ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
+
+            time = time_c;  // hodnota timera [s]
+            dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
+            delta_Hp = (ROCD / 60) * time;  // [ft]
+
+            grad = getGradient(ftTOm(delta_Hp),dist);
+
+            FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+
+            FWeight = fuelWeight(FFlow, time);  // [kg]
+            actualACMass = ACMass - FWeight;    // [kg]
+        }
+
+    }
+    else if(ui->ROCD_rb->isChecked()) // Define ROCD and CAS and calculate the rest of flight parameters
+    {
+        CAS = vCAS;                                         // [kt]
+        TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
+        flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+
+        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+
+        mach = TAStoM(knotsTOmps(TAS),T);
+
+        if(Hp <= minAlt)
+        {
+            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+        }
+        else if(Hp > minAlt && Hp < maxAlt)
+        {
+            if(minAlt == transAlt)
+            {
+                fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+            }
+            else if(minAlt == Hp_trop)
+            {
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+            }
+        }
+        else if(Hp >= maxAlt)
+        {
+            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+        }
+
+        ROCD = vROCD;
+        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/TAS) + D;
+
+        time = time_c;  // hodnota timera [s]
+        dist = getFlightDistance(time, knotsTOmps(TAS));
+        delta_Hp = (ROCD / 60) * time;  // [ft]
+        grad = getGradient(ftTOm(delta_Hp),dist);
+
+        FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
+
+        FWeight = fuelWeight(FFlow, time);  // [kg]
+        actualACMass = ACMass - FWeight;    // [kg]
+
+    }
 
     outVect.clear();
     outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << actualACMass;
@@ -2083,10 +2208,9 @@ void Dialog::EmergencyDescent_selected()
 
 void Dialog::TimeOut()
 {
-    QVector<double> vect = BADAcalc(Hp_actual, CAS_actual, ACMass_actual, timer_const);
+    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, ACMass_actual, timer_const);
     Hp_actual += vect[13];
     ACMass_actual = vect[17];
-
 
     emit send_data(vect);   // send data from 1 calculation to graph dialog window
 }
@@ -2095,9 +2219,11 @@ void Dialog::start_clicked()
 {
     graphWindow->show();
 
-    Hp_actual = ui->Hp_0LineEdit->text().toDouble();
-    CAS_actual = ui->CASLineEdit->text().toDouble();
-    ACMass_actual = ui->ACMassLineEdit->text().toDouble();
+    Hp_actual = ui->Hp_0LineEdit->text().toDouble();        // [ft]
+    CAS_init = ui->CASLineEdit->text().toDouble();          // [kt]
+    MACH_init = ui->MachLineEdit->text().toDouble();        // [-]
+    ROCD_init = ui->ROCDLineEdit->text().toDouble();        // [ft/min]
+    ACMass_actual = ui->ACMassLineEdit->text().toDouble();  // [kg]
 
     timer->start(timer_const*1000);
 
