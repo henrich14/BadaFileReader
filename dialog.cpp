@@ -83,7 +83,7 @@ Dialog::Dialog(QWidget *parent) :
     ui->ACMassLineEdit->setText("65300");
     ui->CASLineEdit->setText("290");
     ui->ROCDLineEdit->setText("-1500");
-    ui->GradientLineEdit->setText("3");
+    ui->GradientLineEdit->setText("-3");
     ui->MachLineEdit->setText("0.78");
     ui->Hp_0LineEdit->setText("38000");
     ui->Hp_nLineEdit->setText("0");
@@ -1010,16 +1010,54 @@ double Dialog::fuelWeight(const double &fuelflow, const double &time)
     return weight;
 }
 
+bool Dialog::validationTests(const QString &EngType, const double &actualACMass, const double &minCAS, const double &vCAS, const double &Altitude, bool &minCASLimit, bool &maxCASLimit, bool &maxAltLimit)
+{
+    // test min and max CAS, max flight Altitude and throw error message
+    // input EngType[Jet/Turboprop/Piston]; vCAS[kt]; Altitude[ft]
+
+    bool testFailed = false;
+
+    if(minCAS > vCAS && minCASLimit == false)
+    {
+        minCASLimit = true;
+        testFailed = true;
+        QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
+                             + QString::number(Altitude) + " [ft] with actual CAS = " + QString::number(vCAS) + " [kt]");
+    }
+
+    if(V_MO < vCAS && maxCASLimit == false)
+    {
+        maxCASLimit = true;
+        testFailed = true;
+        QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
+                             + QString::number(Altitude) + " [ft] with actual CAS = " + QString::number(vCAS) + " [kt]");
+    }
+
+    double maxAltitude = getMaxAltitude(actualACMass);
+    if(maxAltitude < Altitude && maxAltLimit == false)
+    {
+        maxAltLimit = true;
+        testFailed = true;
+        QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
+                             + " [ft] with actual ALT = " + QString::number(Altitude) + " [ft]");
+    }
+
+    return testFailed;
+}
+
 double Dialog::getMinCAS(const double &vmin, const double &buffetLimit, const double &altitude)
 {
+    // calculate min speed from vmin and buffeting limits for jet engines
+    // vmin [kt]; buffetLimit [kt]; input altitude [ft]
+    // output minCAS [kt]
 
     double minCAS = 0.0;
 
-    if(altitude < 15000) // in {ft]
+    if(altitude < 15000)
     {
         minCAS = vmin;
     }
-    else if(altitude >= 15000) // in [ft]
+    else if(altitude >= 15000)
     {
         minCAS = qMax(vmin, buffetLimit);
     }
@@ -1239,16 +1277,11 @@ void Dialog::run()
 
     bool expedite;
     if(ui->expediteChB->isChecked())
-    {
         expedite = true;
-    }
     else
-    {
         expedite = false;
-    }
 
-    //double H_trop = mTOft(11000);
-    bool minLimitReached = false;
+    bool minCASLimitReached = false;
     bool maxCASLimitReached = false;
     bool maxAltLimitReached = false;
 
@@ -1260,14 +1293,16 @@ void Dialog::run()
         Hp_vect << initHp - i*delta_Hp;     // vector vysok [ft]
     }
 
-    //double actualACMass = ACmass;
     ACMass_vect << actualACMass;
 
-    double T, p, ro, CAS, TAS, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight;
+    double T, p, ro, CAS, TAS, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, Thr_max_climb;
     QString flightConfig;
 
     // prevodova vyska - crossover altitude / transition altitude
     transAlt = transitionAltitude(knotsTOmps(initCAS),initMach); // vypocet crossover alt pre definovanu CAS a M
+
+    double minAlt = qMin(mTOft(Hp_trop), transAlt);
+    double maxAlt = qMax(mTOft(Hp_trop), transAlt);
 
     if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
     {
@@ -1278,9 +1313,6 @@ void Dialog::run()
             p = airPressureDetermination(ftTOm(Hp_vect.at(i)));
             ro = airDensityDetermination(T,p);
 
-            double minAlt = qMin(Hp_trop, transAlt);
-            double maxAlt = qMax(Hp_trop, transAlt);
-
             if(Hp_vect.at(i) <= minAlt)
             {
                 // tu sa udrziava konst CAS a pocita sa mach
@@ -1290,68 +1322,22 @@ void Dialog::run()
                 TAS_vect << mpsTOknots(TAS);
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
 
-                // test the min speed and buffeting speed limits for Jet
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                mach = TAStoM(TAS,T);
+                MACH_vect << mach;
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+                fM_vect << fM;
+
+                // test the min speed and buffeting speed limits for Jet, test altitude
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
                     double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                     minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                 }
-
-                if(minCAS > CAS && minLimitReached == false)
-                {
-                    minLimitReached = true;
-                    QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                }
-
-                if(V_MO < CAS && maxCASLimitReached == false)
-                {
-                    maxCASLimitReached = true;
-                    QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                }
-
-                double maxAltitude = getMaxAltitude(actualACMass);
-                if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                {
-                    maxAltLimitReached = true;
-                    QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                         + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                }
-
-                double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
-                Thr = calculateDescentThrust(Hp_vect.at(i),Thr_max_climb, flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-                Thr_vect << Thr;
-                D_vect << D;
-
-                mach = TAStoM(TAS,T);
-                MACH_vect << mach;
-                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
-                fM_vect << fM;
-
-                ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
-                ROCD_vect << mpsTOftpmin(ROCD);
-
-                time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
-                TIME_vect << time;
-
-                dist = getFlightDistance(time, TAS);
-                DIST_vect << mtoNM(dist);
-
-                grad = getGradient(ftTOm(delta_Hp),dist);
-                GRAD_vect << grad;
-
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
-                FUELFLOW_vect << FFlow;
-
-                FWeight = fuelWeight(FFlow, time);
-                FUEL_vect << FWeight;
-                actualACMass -= FWeight;
-                ACMass_vect << actualACMass;
+                validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
+
             else if(Hp_vect.at(i) > minAlt && Hp_vect.at(i) < maxAlt)
             {
                 // tu sa udrziava konst mach a pocita sa CAS
@@ -1365,41 +1351,20 @@ void Dialog::run()
                     CAS_vect << mpsTOknots(CAS);
                     flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
-                    // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+                    fM_vect << fM;
+
+                    // test the min speed and buffeting speed limits for Jet, test altitude
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
                         double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                         minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                     }
-
-                    if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
-                    {
-                        minLimitReached = true;
-                        QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(mpsTOknots(CAS)) + " [kt]");
-                    }
-
-                    if(V_MO < CAS && maxCASLimitReached == false)
-                    {
-                        maxCASLimitReached = true;
-                        QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                    }
-
-                    double maxAltitude = getMaxAltitude(actualACMass);
-                    if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                    {
-                        maxAltLimitReached = true;
-                        QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                             + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                    }
-
-                    fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
-                    fM_vect << fM;
+                    validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
                 }
-                else if(minAlt == Hp_trop)
+                else if(minAlt == mTOft(Hp_trop))
                 {
                     CAS = initCAS;
                     CAS_vect << CAS;
@@ -1410,66 +1375,19 @@ void Dialog::run()
                     mach = TAStoM(TAS,T);
                     MACH_vect << mach;
 
-                    // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+                    fM_vect << fM;
+
+                    // test the min speed and buffeting speed limits for Jet, test altitude
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
                         double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                         minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                     }
-
-                    if(minCAS > CAS && minLimitReached == false)
-                    {
-                        minLimitReached = true;
-                        QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                    }
-
-                    if(V_MO < CAS && maxCASLimitReached == false)
-                    {
-                        maxCASLimitReached = true;
-                        QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                    }
-
-                    double maxAltitude = getMaxAltitude(actualACMass);
-                    if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                    {
-                        maxAltLimitReached = true;
-                        QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                             + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                    }
-
-                    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
-                    fM_vect << fM;
+                    validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
                 }
-
-                double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
-                Thr = calculateDescentThrust(Hp_vect.at(i), Thr_max_climb, flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-                Thr_vect << Thr;
-                D_vect << D;
-
-                ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
-                ROCD_vect << mpsTOftpmin(ROCD);
-
-                time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
-                TIME_vect << time;
-
-                dist = getFlightDistance(time, TAS);
-                DIST_vect << mtoNM(dist);
-
-                grad = getGradient(ftTOm(delta_Hp),dist);
-                GRAD_vect << grad;
-
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
-                FUELFLOW_vect << FFlow;
-
-                FWeight = fuelWeight(FFlow, time);
-                FUEL_vect << FWeight;
-                actualACMass -= FWeight;
-                ACMass_vect << actualACMass;
             }
             else if(Hp_vect.at(i) >= maxAlt)
             {
@@ -1485,63 +1403,47 @@ void Dialog::run()
                 CAS_vect << mpsTOknots(CAS);
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
-                // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                // test the min speed and buffeting speed limits for Jet, test altitude
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
                     double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                     minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                 }
-
-                if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
-                {
-                    minLimitReached = true;
-                    QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(mpsTOknots(CAS)) + " [kt]");
-                }
-
-                if(V_MO < CAS && maxCASLimitReached == false)
-                {
-                    maxCASLimitReached = true;
-                    QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                }
-
-                double maxAltitude = getMaxAltitude(actualACMass);
-                if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                {
-                    maxAltLimitReached = true;
-                    QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                         + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                }
-
-                double Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
-                Thr = calculateDescentThrust(Hp_vect.at(i), Thr_max_climb, flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-                Thr_vect << Thr;
-                D_vect << D;
-
-                ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
-                ROCD_vect << mpsTOftpmin(ROCD);
-
-                time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
-                TIME_vect << time;
-
-                dist = getFlightDistance(time, TAS);
-                DIST_vect << mtoNM(dist);
-
-                grad = getGradient(ftTOm(delta_Hp),dist);
-                GRAD_vect << grad;
-
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
-                FUELFLOW_vect << FFlow;
-
-                FWeight = fuelWeight(FFlow, time);
-                FUEL_vect << FWeight;
-                actualACMass -= FWeight;
-                ACMass_vect << actualACMass;
+                validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
+
+            Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
+            Thr = calculateDescentThrust(Hp_vect.at(i),Thr_max_climb, flightConfig);
+            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
+            Thr_vect << Thr;
+            D_vect << D;
+
+            mach = TAStoM(TAS,T);
+            MACH_vect << mach;
+            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+            fM_vect << fM;
+
+            ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
+            ROCD_vect << mpsTOftpmin(ROCD);
+
+            time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
+            TIME_vect << time;
+
+            dist = getFlightDistance(time, TAS);
+            DIST_vect << mtoNM(dist);
+
+            grad = getGradient(ftTOm(delta_Hp),dist);
+            GRAD_vect << grad;
+
+            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+            FUELFLOW_vect << FFlow;
+
+            FWeight = fuelWeight(FFlow, time);
+            FUEL_vect << FWeight;
+            actualACMass -= FWeight;
+            ACMass_vect << actualACMass;
         }
     }
     else if(ui->ROCD_rb->isChecked()) // Define ROCD and CAS and calculate the rest of flight parameters
@@ -1559,47 +1461,21 @@ void Dialog::run()
             TAS_vect << mpsTOknots(TAS);
             flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
 
-            // test the min speed and buffeting speed limits
-            double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+            mach = TAStoM(TAS,T);
+            MACH_vect << mach;
+
+            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
+            D_vect << D;
+
+            // test the min speed and buffeting speed limits for Jet, test altitude
+            double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
             double minCAS = vmin;
             if(EngineType == "Jet")
             {
                 double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                 minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
             }
-
-            if(minCAS > CAS && minLimitReached == false)
-            {
-                minLimitReached = true;
-                QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                     + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-            }
-
-            if(V_MO < CAS && maxCASLimitReached == false)
-            {
-                maxCASLimitReached = true;
-                QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                     + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-            }
-
-            double maxAltitude = getMaxAltitude(actualACMass);
-            if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-            {
-                maxAltLimitReached = true;
-                QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                     + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-            }
-
-            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-            D_vect << D;
-
-            mach = TAStoM(TAS,T);
-            MACH_vect << mach;
-
-
-            // need to know if Hp_trop is under transition Altitude or it is the other way
-            double minAlt = qMin(Hp_trop, transAlt);
-            double maxAlt = qMax(Hp_trop, transAlt);
+            validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
 
             if(Hp_vect.at(i) <= minAlt)
             {
@@ -1614,14 +1490,14 @@ void Dialog::run()
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
                 }
-                else if(minAlt == Hp_trop)
+                else if(minAlt == mTOft(Hp_trop))
                 {
                     fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
                 }
             }
             else if(Hp_vect.at(i) >= maxAlt)
             {
-                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+                fM = calculateShareFactor(mach, T, "CONSTANT_MACH_ABOVE_TROPOPAUSE");
             }
 
             fM_vect << fM;
@@ -1657,9 +1533,6 @@ void Dialog::run()
             p = airPressureDetermination(ftTOm(Hp_vect.at(i)));
             ro = airDensityDetermination(T,p);
 
-            double minAlt = qMin(Hp_trop, transAlt);
-            double maxAlt = qMax(Hp_trop, transAlt);
-
             if(Hp_vect.at(i) <= minAlt)
             {
                 // tu sa udrziava konst CAS a pocita sa mach
@@ -1669,66 +1542,20 @@ void Dialog::run()
                 TAS_vect << mpsTOknots(TAS);
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
 
-                // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                mach = TAStoM(TAS,T);
+                MACH_vect << mach;
+                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
+                fM_vect << fM;
+
+                // test the min speed and buffeting speed limits for Jet, test altitude
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
                     double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                     minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                 }
-
-                if(minCAS > CAS && minLimitReached == false)
-                {
-                    minLimitReached = true;
-                    QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                }
-
-                if(V_MO < CAS && maxCASLimitReached == false)
-                {
-                    maxCASLimitReached = true;
-                    QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                }
-
-                double maxAltitude = getMaxAltitude(actualACMass);
-                if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                {
-                    maxAltLimitReached = true;
-                    QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                         + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                }
-
-                //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-                D_vect << D;
-
-                mach = TAStoM(TAS,T);
-                MACH_vect << mach;
-                fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
-                fM_vect << fM;
-
-                GRAD_vect << initGrad;
-                dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
-                DIST_vect << mtoNM(dist);
-
-                time = dist / TAS;
-                TIME_vect << time;
-
-                ROCD = -(delta_Hp/time) * 60;
-                ROCD_vect << ROCD;
-
-                Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
-                Thr_vect << Thr;
-
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
-                FUELFLOW_vect << FFlow;
-
-                FWeight = fuelWeight(FFlow, time);
-                FUEL_vect << FWeight;
-                actualACMass -= FWeight;
-                ACMass_vect << actualACMass;
+                validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
             else if(Hp_vect.at(i) > minAlt && Hp_vect.at(i) < maxAlt)
             {
@@ -1744,41 +1571,20 @@ void Dialog::run()
                     CAS_vect << mpsTOknots(CAS);
                     flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
-                    // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+                    fM_vect << fM;
+
+                    // test the min speed and buffeting speed limits for Jet, test altitude
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
                         double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                         minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                     }
-
-                    if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
-                    {
-                        minLimitReached = true;
-                        QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(mpsTOknots(CAS)) + " [kt]");
-                    }
-
-                    if(V_MO < CAS && maxCASLimitReached == false)
-                    {
-                        maxCASLimitReached = true;
-                        QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                    }
-
-                    double maxAltitude = getMaxAltitude(actualACMass);
-                    if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                    {
-                        maxAltLimitReached = true;
-                        QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                             + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                    }
-
-                    fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
-                    fM_vect << fM;
+                    validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
                 }
-                else if(minAlt == Hp_trop)
+                else if(minAlt == mTOft(Hp_trop))
                 {
                     CAS = initCAS;
                     CAS_vect << CAS;
@@ -1789,65 +1595,19 @@ void Dialog::run()
                     mach = TAStoM(TAS,T);
                     MACH_vect << mach;
 
-                    // test the min speed and buffeting speed limits
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+                    fM_vect << fM;
+
+                    // test the min speed and buffeting speed limits for Jet, test altitude
+                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
                         double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                         minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                     }
-
-                    if(minCAS > CAS && minLimitReached == false)
-                    {
-                        minLimitReached = true;
-                        QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                    }
-
-                    if(V_MO < CAS && maxCASLimitReached == false)
-                    {
-                        maxCASLimitReached = true;
-                        QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                             + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                    }
-
-                    double maxAltitude = getMaxAltitude(actualACMass);
-                    if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                    {
-                        maxAltLimitReached = true;
-                        QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                             + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                    }
-
-                    fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
-                    fM_vect << fM;
+                    validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
                 }
-
-                //Thr = calculateDescentThrust(Hp_vect.at(i), flightConfig);
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-                D_vect << D;
-
-                GRAD_vect << initGrad;
-                dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
-                DIST_vect << mtoNM(dist);
-
-                time = dist / TAS;
-                TIME_vect << time;
-
-                ROCD = -(delta_Hp*60/time);
-                ROCD_vect << ROCD;
-
-                Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
-                Thr_vect << Thr;
-
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
-                FUELFLOW_vect << FFlow;
-
-                FWeight = fuelWeight(FFlow, time);
-                FUEL_vect << FWeight;
-                actualACMass -= FWeight;
-                ACMass_vect << actualACMass;
             }
             else if(Hp_vect.at(i) >= maxAlt)
             {
@@ -1863,61 +1623,40 @@ void Dialog::run()
                 CAS_vect << mpsTOknots(CAS);
                 flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
 
-                // test the min speed and buffeting speed limits
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);
+                // test the min speed and buffeting speed limits for Jet, test altitude
+                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
                     double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                     minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                 }
-
-                if(minCAS > mpsTOknots(CAS) && minLimitReached == false)
-                {
-                    minLimitReached = true;
-                    QMessageBox::warning(this, "MIN CAS error", "Min CAS speed limit reached CAS =" + QString::number(minCAS) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(mpsTOknots(CAS)) + " [kt]");
-                }
-
-                if(V_MO < CAS && maxCASLimitReached == false)
-                {
-                    maxCASLimitReached = true;
-                    QMessageBox::warning(this, "MAX CAS error", "Max CAS speed limit reached CAS =" + QString::number(V_MO) + " [kt] at "
-                                         + QString::number(Hp_vect.at(i)) + " [ft] with actual CAS = " + QString::number(CAS) + " [kt]");
-                }
-
-                double maxAltitude = getMaxAltitude(actualACMass);
-                if(maxAltitude < Hp_vect.at(i) && maxAltLimitReached == false)
-                {
-                    maxAltLimitReached = true;
-                    QMessageBox::warning(this, "MAX ALT error", "Max altitude limit reached MAX_ALT = " + QString::number(maxAltitude)
-                                         + " [ft] with actual ALT = " + QString::number(Hp_vect.at(i)) + " [ft]");
-                }
-
-                D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
-                D_vect << D;
-
-                GRAD_vect << initGrad;
-                dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
-                DIST_vect << mtoNM(dist);
-
-                time = dist / TAS;
-                TIME_vect << time;
-
-                ROCD = -(delta_Hp*60/time);
-                ROCD_vect << ROCD;
-
-                Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
-                Thr_vect << Thr;
-
-                FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
-                FUELFLOW_vect << FFlow;
-
-                FWeight = fuelWeight(FFlow, time);
-                FUEL_vect << FWeight;
-                actualACMass -= FWeight;
-                ACMass_vect << actualACMass;
+                validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
+
+            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
+            D_vect << D;
+
+            GRAD_vect << initGrad;
+            dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
+            DIST_vect << mtoNM(dist);
+
+            time = dist / TAS;
+            TIME_vect << time;
+
+            ROCD = -(delta_Hp/time) * 60;
+            ROCD_vect << ROCD;
+
+            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
+            Thr_vect << Thr;
+
+            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
+            FUELFLOW_vect << FFlow;
+
+            FWeight = fuelWeight(FFlow, time);
+            FUEL_vect << FWeight;
+            actualACMass -= FWeight;
+            ACMass_vect << actualACMass;
         }
     }
 
@@ -1959,7 +1698,11 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
     double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp;
     QString flightConfig;
-    bool expedite = false;
+    bool expedite;
+    if(ui->expediteChB->isChecked())
+        expedite = true;
+    else
+        expedite = false;
 
     T = temperatureDetermination(ftTOm(Hp));    // Temperature based on altitude
     p = airPressureDetermination(ftTOm(Hp));    // pressure based on altitude
@@ -1968,8 +1711,8 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
     // prevodova vyska - crossover altitude / transition altitude
     transAlt = transitionAltitude(knotsTOmps(vCAS),vMach); // vypocet crossover alt pre definovanu CAS a M
 
-    double minAlt = qMin(Hp_trop, transAlt);    // calcualtion of smaller value of altitude between Hp_trop and TransAlt
-    double maxAlt = qMax(Hp_trop, transAlt);    // calcualtion of greater value of altitude between Hp_trop and TransAlt
+    double minAlt = qMin(mTOft(Hp_trop), transAlt);    // calcualtion of smaller value of altitude between Hp_trop and TransAlt
+    double maxAlt = qMax(mTOft(Hp_trop), transAlt);    // calcualtion of greater value of altitude between Hp_trop and TransAlt
 
     if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
     {
@@ -1993,7 +1736,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
                 fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
             }
 
-            else if(minAlt == Hp_trop)
+            else if(minAlt == mTOft(Hp_trop))
             {
                 // tu sa udrziava konst CAS a pocita sa mach
                 CAS = vCAS;                             // [kt]
@@ -2054,7 +1797,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             {
                 fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
             }
-            else if(minAlt == Hp_trop)
+            else if(minAlt == mTOft(Hp_trop))
             {
                 fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
             }
@@ -2102,7 +1845,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
                 fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
 
             }
-            else if(minAlt == Hp_trop)
+            else if(minAlt == mTOft(Hp_trop))
             {
                 CAS = vCAS;                                         // [kt]
                 TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
