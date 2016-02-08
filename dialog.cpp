@@ -622,7 +622,8 @@ double Dialog::CASschedule(const double &altitude, const double &transAlt, const
     // check minimal speed for each phase of flight
 
     v_min = calculateVmin(phase);
-    CAS_min = qMin(v_min,CAS_min);
+    CAS_min = v_min; //qMin(v_min,CAS_min);                                                      // opravit
+    //qDebug() << "v_min=" << v_min << "CAS_min" << CAS_min;
 
     return CAS_min;
 }
@@ -1010,6 +1011,158 @@ double Dialog::fuelWeight(const double &fuelflow, const double &time)
     return weight;
 }
 
+void Dialog::flightEnvelope()
+{
+    double actualACMass = ui->ACMassLineEdit->text().toDouble();
+    double maxAltitude = getMaxAltitude(actualACMass);
+    double initHp = 41000; //maxAltitude;
+    double lastHp = 0;
+    double delta_Hp = 500;
+
+    double steps = (initHp-lastHp) / delta_Hp;
+
+    double T, p, ro, CAS, TAS, MACH, transAlt, Hp_trop_ft, Hp;
+    QVector<double> Hp_vect, Hp_out, CAS_vect_max, CAS_vect_min, MACH_vect_max, MACH_vect_min, TAS_vect_max, TAS_vect_min;
+
+    Hp_trop_ft = mTOft(Hp_trop);    // [ft]
+    transAlt = transitionAltitude(knotsTOmps(V_MO),M_MO);   // [ft]
+
+    double vmin, minCAS, minTAS, minMACH, buffetLimit;
+
+    for(int i=0; i<=steps; i++)
+    {
+        Hp_vect << initHp - i*delta_Hp;     // vector vysok [ft]
+    }
+
+    for(int i=0; i<Hp_vect.size(); i++)
+    {
+        Hp = Hp_vect.at(i);
+
+        if(Hp_vect.at(i) > maxAltitude)
+            Hp = maxAltitude;
+
+        Hp_out << Hp;
+
+        T = temperatureDetermination(ftTOm(Hp));
+        p = airPressureDetermination(ftTOm(Hp));
+        ro = airDensityDetermination(T,p);
+
+        if(Hp <= transAlt)
+        {
+            // tu sa udrziava konst CAS a pocita sa mach
+            CAS = V_MO;
+            CAS_vect_max << CAS;
+
+            TAS = CAStoTAS(knotsTOmps(CAS),p,ro);
+            TAS_vect_max << mpsTOknots(TAS);
+
+            MACH = TAStoM(TAS,T);
+            MACH_vect_max << MACH;
+
+            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            minCAS = vmin;
+            if(EngineType == "Jet")
+            {
+                buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                minCAS = getMinCAS(vmin, buffetLimit, Hp);
+            }
+
+            CAS_vect_min << minCAS;
+
+            minTAS = CAStoTAS(knotsTOmps(minCAS),p,ro);
+            TAS_vect_min << mpsTOknots(minTAS);
+
+            minMACH = TAStoM(minTAS,T);
+            MACH_vect_min << minMACH;
+        }
+
+        else if(Hp > transAlt && Hp < Hp_trop_ft)
+        {
+            // tu sa udrziava konst mach a pocita sa CAS
+            MACH = M_MO;
+            MACH_vect_max << MACH;
+
+            TAS = MtoTAS(MACH,T);
+            TAS_vect_max << mpsTOknots(TAS);
+
+            CAS = TAStoCAS(TAS,p,ro);
+            CAS_vect_max << mpsTOknots(CAS);
+
+            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            minCAS = vmin;
+            if(EngineType == "Jet")
+            {
+                buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                minCAS = getMinCAS(vmin, buffetLimit, Hp);
+            }
+
+            CAS_vect_min << minCAS;
+
+            minTAS = CAStoTAS(knotsTOmps(minCAS),p,ro);
+            TAS_vect_min << mpsTOknots(minTAS);
+
+            minMACH = TAStoM(minTAS,T);
+            MACH_vect_min << minMACH;
+        }
+
+        else if(Hp >= Hp_trop_ft)
+        {
+            // tu sa udrziva konst mach a pocita sa CAS
+            MACH = M_MO;
+            MACH_vect_max << MACH;
+
+            TAS = MtoTAS(MACH,T);
+            TAS_vect_max << mpsTOknots(TAS);
+
+            CAS = TAStoCAS(TAS,p,ro);
+            CAS_vect_max << mpsTOknots(CAS);
+
+            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            minCAS = vmin;
+            if(EngineType == "Jet")
+            {
+                buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
+                minCAS = getMinCAS(vmin, buffetLimit, Hp);
+            }
+
+            CAS_vect_min << minCAS;
+
+            minTAS = CAStoTAS(knotsTOmps(minCAS),p,ro);
+            TAS_vect_min << mpsTOknots(minTAS);
+
+            minMACH = TAStoM(minTAS,T);
+            MACH_vect_min << minMACH;
+        }
+
+        if(Hp_out.last() == Hp_out.at(Hp_out.size()-2))
+        {
+            Hp_out.remove(Hp_out.size()-1);
+        }
+
+    }
+
+    QDir dir;
+
+    QFile file(dir.currentPath() + "/flightEnvelope.txt");
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        qDebug() << "Cannot open file " + file.fileName() + " for writing!";
+    }
+
+    QTextStream stream(&file);
+
+    stream << "Hp[ft]\tCAS_min[kt]\tCAS_max[kt]\tTAS_min[kt]\tTAS_max[kt]\tM_min[-]\tM_max[-]" << "\n";
+
+    for(int i=0; i<Hp_out.size(); i++)
+    {
+        stream << Hp_out.at(i) << "\t" << CAS_vect_min.at(i) << "\t" << CAS_vect_max.at(i) << "\t" << TAS_vect_min.at(i) << "\t" << TAS_vect_max.at(i) << "\t"
+               << MACH_vect_min.at(i) << "\t" << MACH_vect_max.at(i) << "\n";
+    }
+
+    qDebug() << "Flight Envelope Data successfully saved to:" << file.fileName();
+    file.close();
+}
+
 bool Dialog::validationTests(const QString &EngType, const double &actualACMass, const double &minCAS, const double &vCAS, const double &Altitude, bool &minCASLimit, bool &maxCASLimit, bool &maxAltLimit)
 {
     // test min and max CAS, max flight Altitude and throw error message
@@ -1090,7 +1243,7 @@ double Dialog::buffetingLimit(const double &pressure, const double &ACweight)
     double X3 = 2*qSqrt(-Q) * qCos(theta3) - a1/3;
 
     limit << X1 << X2 << X3;
-    double minSpeed = 99; // result is in MACH [-]
+    double minSpeed = 999999; // result is in MACH [-]
 
     for(int i=0; i<limit.size(); i++)
     {
@@ -1265,7 +1418,9 @@ double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrus
 }
 
 void Dialog::run()
-{    
+{
+    flightEnvelope();
+
     double actualACMass = ui->ACMassLineEdit->text().toDouble();
     double initCAS = ui->CASLineEdit->text().toDouble();
     double initROCD = ui->ROCDLineEdit->text().toDouble();
@@ -1362,7 +1517,7 @@ void Dialog::run()
                         double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                         minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                     }
-                    validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
+                    validationTests(EngineType,actualACMass,vmin,mpsTOknots(CAS),Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
                 }
                 else if(minAlt == mTOft(Hp_trop))
                 {
@@ -1411,7 +1566,7 @@ void Dialog::run()
                     double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                     minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                 }
-                validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
+                validationTests(EngineType, actualACMass, vmin ,mpsTOknots(CAS), Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
 
             Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
@@ -1582,7 +1737,7 @@ void Dialog::run()
                         double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                         minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                     }
-                    validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
+                    validationTests(EngineType, actualACMass, vmin, mpsTOknots(CAS), Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
                 }
                 else if(minAlt == mTOft(Hp_trop))
                 {
@@ -1631,7 +1786,7 @@ void Dialog::run()
                     double buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
                     minCAS = getMinCAS(vmin, buffetLimit, Hp_vect.at(i));
                 }
-                validationTests(EngineType,actualACMass,vmin,CAS,Hp_vect.at(i),minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
+                validationTests(EngineType, actualACMass, vmin,mpsTOknots(CAS), Hp_vect.at(i), minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
 
             D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);

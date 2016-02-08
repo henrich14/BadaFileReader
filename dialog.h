@@ -53,6 +53,8 @@ public:
     double fuelFlow(const double &vTAS, const double &Thr, const double &altitude, const QString &phase, const QString flightConfig, const QString &EngType, const bool &Idle);
     double fuelWeight(const double &fuelflow, const double &time);
 
+    void flightEnvelope();
+
     bool validationTests(const QString &EngType, const double &actualACMass, const double &minCAS, const double &vCAS, const double &Altitude, bool &minCASLimit, bool &maxCASLimit, bool &maxAltLimit);
     double getMinCAS(const double &vmin, const double &buffetLimit, const double &altitude);
     double buffetingLimit(const double &pressure, const double &ACweight);
