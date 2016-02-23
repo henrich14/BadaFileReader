@@ -588,7 +588,7 @@ double Dialog::CASschedule(const double &altitude, const double &transAlt, const
         }
         else if(altitude >= transAlt)
         {
-            CAS_min = Mdes["AV"];   // switch from CAS to MACH speed
+            CAS_min = Mdes["AV"];
         }
     }
     else if(EngType == "Piston")
@@ -615,7 +615,7 @@ double Dialog::CASschedule(const double &altitude, const double &transAlt, const
         }
         else if(altitude >= transAlt)
         {
-            CAS_min = Mdes["AV"];   // switch from CAS to MACH speed
+            CAS_min = Mdes["AV"];
         }
     }
 
@@ -623,7 +623,6 @@ double Dialog::CASschedule(const double &altitude, const double &transAlt, const
 
     v_min = calculateVmin(phase);
     CAS_min = v_min; //qMin(v_min,CAS_min);                                                   // opravit
-    //qDebug() << "v_min=" << v_min << "CAS_min" << CAS_min;
 
     return CAS_min;
 }
@@ -1582,8 +1581,6 @@ void Dialog::run()
             Thr_vect << Thr;
             D_vect << D;
 
-            mach = TAStoM(TAS,T);
-            MACH_vect << mach;
             fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
             fM_vect << fM;
 
@@ -1884,6 +1881,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             CAS = vCAS;                             // [kt]
             TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
             flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
         }
 
         else if(Hp > minAlt && Hp < maxAlt)
@@ -1937,8 +1935,8 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
         actualACMass = ACMass - FWeight;    // [kg]
-
     }
+
     else if(ui->ROCD_rb->isChecked()) // Define ROCD and CAS and calculate the rest of flight parameters
     {
         CAS = vCAS;                                         // [kt]
@@ -1981,7 +1979,6 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
         actualACMass = ACMass - FWeight;    // [kg]
-
     }
 
     else if(ui->Gradient_rb->isChecked())
@@ -2185,7 +2182,6 @@ void Dialog::flightEnvelope_certified()
 
             vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
             minCAS = vmin;
-            qDebug() << "v_min" << minCAS;
             if(EngineType == "Jet")
             {
                 buffetLimit = mpsTOknots(TAStoCAS(MtoTAS(buffetingLimit(p, actualACMass*g0),T), p, ro));
