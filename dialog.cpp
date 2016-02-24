@@ -62,6 +62,10 @@ const int H_max_LD = 3000;
 
 // expedite descent factor
 const double C_des_exp = 1.6;
+// maximum cruise thrust coefficient
+const double C_Tcr = 0.95;
+// take-off thrust coefficient
+const double C_ThTO = 1.2;
 /////////////////////////////////////////
 
 // initial conditions
@@ -714,6 +718,46 @@ double Dialog::calculateMaxClimbThrust(const double &altitude, const double &vTA
     Thr = Thr * (1 - C_Tc5*deltaT_eff);
 
     return Thr;
+}
+
+double Dialog::calculateMaxCruiseThrust(const double &maxClimbThrust)
+{
+    // caluclate maximum available thrust in cruise situation
+    // input maxClimbThrust [N]
+    // output maxCruiseThrust [N]
+
+    double maxCruiseThrust = 0.0;
+
+    maxCruiseThrust = C_Tcr * maxClimbThrust;
+
+    return  maxCruiseThrust;
+}
+
+double Dialog::calculateReducedClimbPower(const double &altitude, const double &actualACMass, const QString &EngType)
+{
+    // calculate reduced climb power for more realistic flight profile
+    // input altitude [ft]; actualACMass [kg]
+
+    double C_pow_red = 0.0;
+    double h_max = getMaxAltitude(actualACMass);
+
+    double C_red = 0.0;
+    if(altitude < (0.8*h_max))
+    {
+        if(EngType == "Jet")
+            C_red = 0.15;
+        else if(EngType == "Turboprop")
+            C_red = 0.25;
+        else if(EngType == "Piston")
+            C_red = 0.0;
+    }
+    else
+        C_red = 0.0;
+
+    C_pow_red = 1 - C_red * ((m_max - actualACMass) / (m_max - m_min));
+
+
+    return C_pow_red;
 }
 
 double Dialog::calculateDescentThrust(const double &altitude, const double &Thr_max_climb, const QString &config)
