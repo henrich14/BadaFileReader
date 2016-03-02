@@ -47,13 +47,16 @@ public:
     double calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config, const bool &expedite);
     QString getFlightConfiguration(const QString &phase, const double &altitude, const double &vCAS);
     double getFlightTime(const double &ROCD, const double &delta_Hp);
-    double getFlightDistance(const double &time, const double &vTAS);
+    double getFlightDistance(const double &time, const double &vTAS, const double &BankAngle);
     double getGradient(const double &delta_Hp, const double &distance);
     double nominalFuelFlow(const double &vTAS, const double &Thr, const QString &EngType); // thrust specific fuel consumption
     double minimalFuelFlow(const double &altitude, const QString &EngType);
     double cruiseFuelFlow(const double &Thr, const double &vTAS, const QString &EngType);
     double fuelFlow(const double &vTAS, const double &Thr, const double &altitude, const QString &phase, const QString flightConfig, const QString &EngType, const bool &Idle);
     double fuelWeight(const double &fuelflow, const double &time);
+    double rateTurn(const double &BankAngle, const double &vTAS);
+    double turnAngle(const double &rateOfTurn, const double &time);
+    double turnRadius(const double &vTAS, const double &rateOfTurn);
 
     void flightEnvelope_operational();
     void flightEnvelope_certified();
@@ -72,11 +75,13 @@ public:
     double mTOft(const double &meter);
     double mtoNM(const double &meter);
     double NMtom(const double &NM);
+    double r2d(const double &rad);
+    double d2r(const double &deg);
 
     double ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor);
     void run();
     void exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH, const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance, const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM);
-    QVector<double> BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &time_c);
+    QVector<double> BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c);
 
 signals:
     void send_data(const QVector<double> &DATA);
@@ -96,6 +101,7 @@ private:
     double ROCD_init;
     double Grad_init;
     double ACMass_actual;
+    double BankAngle_actual;
 
     QString companyName;
     QHash<QString, int> Vcl1;

@@ -92,6 +92,7 @@ Dialog::Dialog(QWidget *parent) :
     ui->Hp_0LineEdit->setText("38000");
     ui->Hp_nLineEdit->setText("0");
     ui->delta_HpLineEdit->setText("2000");
+    ui->BankAngleLineEdit->setText("15");
 
     ui->ROCDLineEdit->setEnabled(false);
     ui->GradientLineEdit->setEnabled(false);
@@ -900,15 +901,26 @@ double Dialog::getFlightTime(const double &ROCD, const double &delta_Hp)
 
 }
 
-double Dialog::getFlightDistance(const double &time, const double &vTAS)
+double Dialog::getFlightDistance(const double &time, const double &vTAS, const double &BankAngle)
 {
     // calculate flight distance during the time between 2 altitudes
-    // input time [s]; TAS [m/s]
+    // input time [s]; TAS [m/s]; BankAngle [°]
     // output distance [m]
 
     double distance = 0.0;
 
-    distance = time * vTAS;
+    if(BankAngle == 0)
+    {
+        distance = time * vTAS;
+    }
+    else
+    {
+        double rateOfTurn = rateTurn(BankAngle, vTAS); // [rad/s]
+        double alpha = turnAngle(rateOfTurn, time);    // [°]
+        double R = turnRadius(vTAS, rateOfTurn);       // [m]
+
+        distance = (2*PI*R*alpha) / 360;               // [m]
+    }
 
     return distance;
 }
@@ -1052,6 +1064,45 @@ double Dialog::fuelWeight(const double &fuelflow, const double &time)
     weight = fuelflow * time;
 
     return weight;
+}
+
+double Dialog::rateTurn(const double &BankAngle, const double &vTAS)
+{
+    // calculate the rate turn as a function of bank angle
+    // input BankAngle [°]; TAS[m/s]
+    // output rateTurn [rad/s]
+
+    double rateTurn = 0.0;
+
+    rateTurn = (g0 / vTAS) * qTan(d2r(BankAngle));
+
+    return rateTurn;
+}
+
+double Dialog::turnAngle(const double &rateOfTurn, const double &time)
+{
+    // calculates angle of turn with defined rate of turn (based on bank angle)
+    // input time[s]; rateOfTurn[rad/s]
+    // output alpha [°]
+
+    double alpha = 0.0;
+
+    alpha = r2d(rateOfTurn) * time;           // [°]
+
+    return alpha;
+}
+
+double Dialog::turnRadius(const double &vTAS, const double &rateOfTurn)
+{
+    // calculate radius of turn with defined rate of turn (based on bank angle)
+    // input TAS[m/s]; rateOfTurn [rad/s]
+    // output R [m]
+
+    double R = 0.0;
+
+    R = vTAS / rateOfTurn;
+
+    return R;
 }
 
 void Dialog::flightEnvelope_operational()
@@ -1452,6 +1503,32 @@ double Dialog::NMtom(const double &NM)
     return meter;
 }
 
+double Dialog::r2d(const double &rad)
+{
+    // convert radians to degrees
+    // input radian [rad]
+    // output deg [°]
+
+    double deg = 0.0;
+
+    deg = rad * (180/PI);
+
+    return deg;
+}
+
+double Dialog::d2r(const double &deg)
+{
+    // convert degrees to radians
+    // input radian [rad]
+    // output deg [°]
+
+    double rad = 0.0;
+
+    rad = deg * (PI/180);
+
+    return rad;
+}
+
 double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor)
 {
     // calculate the ROCD  - speed and throttle controlled, speed is maintained at some constant CAS or M
@@ -1479,6 +1556,7 @@ void Dialog::run()
     double initHp = ui->Hp_0LineEdit->text().toDouble();
     double lastHp = ui->Hp_nLineEdit->text().toDouble();
     double delta_Hp = ui->delta_HpLineEdit->text().toDouble();
+    double BankAngle_actual = ui->BankAngleLineEdit->text().toDouble();
 
     bool expedite;
     if(ui->expediteChB->isChecked())
@@ -1625,20 +1703,19 @@ void Dialog::run()
             Thr_vect << Thr;
             D_vect << D;
 
-            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
-            fM_vect << fM;
-
             ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
             ROCD_vect << mpsTOftpmin(ROCD);
 
             time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
             TIME_vect << time;
 
-            dist = getFlightDistance(time, TAS);
+            dist = getFlightDistance(time, TAS, BankAngle_actual);
             DIST_vect << mtoNM(dist);
 
             grad = getGradient(ftTOm(delta_Hp),dist);
             GRAD_vect << grad;
+
+            qDebug() << "Hp=" << Hp_vect.at(i) << "TAS=" << mpsTOknots(TAS) << "CAS=" << mpsTOknots(CAS) << "ROCD=" << mpsTOftpmin(ROCD) << "time=" << time << "dist" << dist << "BA" << BankAngle_actual;
 
             FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
             FUELFLOW_vect << FFlow;
@@ -1712,7 +1789,7 @@ void Dialog::run()
             time = getFlightTime(qAbs(initROCD), delta_Hp);
             TIME_vect << time;
 
-            dist = getFlightDistance(time, TAS);
+            dist = getFlightDistance(time, TAS, BankAngle_actual);
             DIST_vect << mtoNM(dist);
 
             grad = getGradient(ftTOm(delta_Hp),dist);
@@ -1841,6 +1918,7 @@ void Dialog::run()
             D_vect << D;
 
             GRAD_vect << initGrad;
+
             dist = ftTOm(delta_Hp)/qTan((qAbs(initGrad)/180)*PI);
             DIST_vect << mtoNM(dist);
 
@@ -1895,7 +1973,7 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &time_c)
+QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c)
 {
     QVector<double> outVect;
 
@@ -1970,7 +2048,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
 
         time = time_c;  // hodnota timera [s]
-        dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
+        dist = getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual);    // [m]
         delta_Hp = (ROCD / 60) * time;  // [ft]
 
         grad = getGradient(ftTOm(delta_Hp),dist);
@@ -2015,7 +2093,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;
 
         time = time_c;  // hodnota timera [s]
-        dist = getFlightDistance(time, knotsTOmps(TAS));    // [m]
+        dist = getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual);    // [m]
         delta_Hp = (ROCD / 60) * time;  // [ft]
         grad = getGradient(ftTOm(delta_Hp),dist);
 
@@ -2073,7 +2151,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
 
         time = time_c;  // hodnota timera [s]
-        dist = time * knotsTOmps(TAS);  // [m]
+        dist = getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual);    // [m]
 
         delta_Hp = mTOft(qTan((grad/180)*PI) * dist);   // [ft]
         ROCD = (delta_Hp/time) * 60;   // [ft/min]
@@ -2133,7 +2211,7 @@ void Dialog::EmergencyDescent_selected()
 
 void Dialog::TimeOut()
 {
-    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, timer_const);
+    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, BankAngle_actual, timer_const);
     Hp_actual += vect[13];
     ACMass_actual = vect[18];
 
@@ -2146,12 +2224,13 @@ void Dialog::start_clicked()
 
     timer_const = 1;    // timer in [s]
 
-    Hp_actual = ui->Hp_0LineEdit->text().toDouble();        // [ft]
-    CAS_init = ui->CASLineEdit->text().toDouble();          // [kt]
-    MACH_init = ui->MachLineEdit->text().toDouble();        // [-]
-    ROCD_init = ui->ROCDLineEdit->text().toDouble();        // [ft/min]
-    Grad_init = ui->GradientLineEdit->text().toDouble();    // [°]
-    ACMass_actual = ui->ACMassLineEdit->text().toDouble();  // [kg]
+    Hp_actual = ui->Hp_0LineEdit->text().toDouble();             // [ft]
+    CAS_init = ui->CASLineEdit->text().toDouble();               // [kt]
+    MACH_init = ui->MachLineEdit->text().toDouble();             // [-]
+    ROCD_init = ui->ROCDLineEdit->text().toDouble();             // [ft/min]
+    Grad_init = ui->GradientLineEdit->text().toDouble();         // [°]
+    ACMass_actual = ui->ACMassLineEdit->text().toDouble();       // [kg]
+    BankAngle_actual = ui->BankAngleLineEdit->text().toDouble(); // [°]
 
     timer->start(timer_const*1000);
 

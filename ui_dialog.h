@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'dialog.ui'
 **
-** Created: Thu 21. Jan 12:38:14 2016
+** Created: Tue 1. Mar 21:52:53 2016
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -110,6 +110,10 @@ public:
     QLabel *label_3;
     QLineEdit *MachLineEdit;
     QLabel *label_8;
+    QHBoxLayout *horizontalLayout_23;
+    QLabel *label_38;
+    QLineEdit *BankAngleLineEdit;
+    QLabel *label_39;
     QHBoxLayout *horizontalLayout_5;
     QLabel *label_4;
     QLineEdit *Hp_0LineEdit;
@@ -134,7 +138,7 @@ public:
     {
         if (Dialog->objectName().isEmpty())
             Dialog->setObjectName(QString::fromUtf8("Dialog"));
-        Dialog->resize(548, 478);
+        Dialog->resize(550, 515);
         verticalLayout_5 = new QVBoxLayout(Dialog);
         verticalLayout_5->setSpacing(6);
         verticalLayout_5->setContentsMargins(11, 11, 11, 11);
@@ -542,6 +546,27 @@ public:
 
         verticalLayout_5->addLayout(horizontalLayout_4);
 
+        horizontalLayout_23 = new QHBoxLayout();
+        horizontalLayout_23->setSpacing(6);
+        horizontalLayout_23->setObjectName(QString::fromUtf8("horizontalLayout_23"));
+        label_38 = new QLabel(Dialog);
+        label_38->setObjectName(QString::fromUtf8("label_38"));
+
+        horizontalLayout_23->addWidget(label_38);
+
+        BankAngleLineEdit = new QLineEdit(Dialog);
+        BankAngleLineEdit->setObjectName(QString::fromUtf8("BankAngleLineEdit"));
+
+        horizontalLayout_23->addWidget(BankAngleLineEdit);
+
+        label_39 = new QLabel(Dialog);
+        label_39->setObjectName(QString::fromUtf8("label_39"));
+
+        horizontalLayout_23->addWidget(label_39);
+
+
+        verticalLayout_5->addLayout(horizontalLayout_23);
+
         horizontalLayout_5 = new QHBoxLayout();
         horizontalLayout_5->setSpacing(6);
         horizontalLayout_5->setObjectName(QString::fromUtf8("horizontalLayout_5"));
@@ -695,6 +720,8 @@ public:
         label_17->setText(QApplication::translate("Dialog", "[\302\260]", 0, QApplication::UnicodeUTF8));
         label_3->setText(QApplication::translate("Dialog", "MACH", 0, QApplication::UnicodeUTF8));
         label_8->setText(QApplication::translate("Dialog", "[-]", 0, QApplication::UnicodeUTF8));
+        label_38->setText(QApplication::translate("Dialog", "BANK angle", 0, QApplication::UnicodeUTF8));
+        label_39->setText(QApplication::translate("Dialog", "[\302\260]", 0, QApplication::UnicodeUTF8));
         label_4->setText(QApplication::translate("Dialog", "Hp_0", 0, QApplication::UnicodeUTF8));
         label_9->setText(QApplication::translate("Dialog", "[ft]", 0, QApplication::UnicodeUTF8));
         label_5->setText(QApplication::translate("Dialog", "Hp_n", 0, QApplication::UnicodeUTF8));
