@@ -7,8 +7,8 @@ Graph::Graph(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->NumOfPoints->setRange(2,1000);
-    ui->NumOfPoints->setValue(10);
+    ui->NumOfPoints->setRange(2,10000);
+    ui->NumOfPoints->setValue(100);
 
     redPen.setColor(Qt::red);
     redPen.setWidthF(1.5);
@@ -16,7 +16,7 @@ Graph::Graph(QWidget *parent) :
     bluePen.setWidthF(1.5);
 
     QStringList comboList;
-    comboList << "Hp" << "ROCD" << "CAS/TAS" << "GRAD" << "FFLow" << "ACMass";
+    comboList << "Hp" << "ROCD" << "CAS/TAS" << "GRAD" << "FFLow" << "FWeight" << "ACMass" << "Distance" << "Air Temperature" << "Air Pressure" << "Air Density" << "Thrust" << "Drag" << "Mach" << "Energy Share Factor";
 
     ui->comboBox_1->insertItems(0,comboList);
     ui->comboBox_2->insertItems(0,comboList);
@@ -111,129 +111,157 @@ void Graph::setCurve(QwtPlot *qwtPlot, const QString &value)
 {
     points = ui->NumOfPoints->value();
 
+    QwtPlotCurve *Hp_line = new QwtPlotCurve("Hp");
+    Hp_line->setPen(redPen);
+    QwtPlotCurve *ROCD_line = new QwtPlotCurve("ROCD");
+    ROCD_line->setPen(redPen);
+    QwtPlotCurve *CAS_line = new QwtPlotCurve("CAS");
+    CAS_line->setPen(redPen);
+    QwtPlotCurve *TAS_line = new QwtPlotCurve("TAS");
+    TAS_line->setPen(bluePen);
+    QwtPlotCurve *GRAD_line = new QwtPlotCurve("Grad");
+    GRAD_line->setPen(redPen);
+    QwtPlotCurve *FFlow_line = new QwtPlotCurve("FFlow");
+    FFlow_line->setPen(redPen);
+    QwtPlotCurve *FWeight_line = new QwtPlotCurve("FWeight");
+    FWeight_line->setPen(redPen);
+    QwtPlotCurve *ACMass_line = new QwtPlotCurve("ACMass");
+    ACMass_line->setPen(redPen);
+    QwtPlotCurve *DIST_line = new QwtPlotCurve("Distance");
+    DIST_line->setPen(redPen);
+    QwtPlotCurve *T_line = new QwtPlotCurve("Air Temperature");
+    T_line->setPen(redPen);
+    QwtPlotCurve *p_line = new QwtPlotCurve("Air Pressure");
+    p_line->setPen(redPen);
+    QwtPlotCurve *ro_line = new QwtPlotCurve("Air Density");
+    ro_line->setPen(redPen);
+    QwtPlotCurve *THR_line = new QwtPlotCurve("Thrust");
+    THR_line->setPen(redPen);
+    QwtPlotCurve *D_line = new QwtPlotCurve("Drag");
+    D_line->setPen(redPen);
+    QwtPlotCurve *MACH_line = new QwtPlotCurve("Mach");
+    MACH_line->setPen(redPen);
+    QwtPlotCurve *fM_line = new QwtPlotCurve("Energy Share Factor");
+    fM_line->setPen(redPen);
+
+    if(value == "Hp")
+    {
+        Hp_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(Hp_vect.last()) + " [ft]");
+    }
+    else if(value == "ROCD")
+    {
+        ROCD_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(ROCD_vect.last()) + " [ft/min]");
+    }
+    else if(value == "CAS/TAS")
+    {
+        CAS_line->attach(qwtPlot);
+        TAS_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(CAS_vect.last()) + "/" + QString::number(TAS_vect.last()) + " [kt]");
+    }
+    else if(value == "GRAD")
+    {
+        GRAD_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(GRAD_vect.last()) + " [°]");
+    }
+    else if(value == "FFLow")
+    {
+        FFlow_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(FFLow_vect.last()) + " [kg/s]");
+    }
+    else if(value == "FWeight")
+    {
+        FWeight_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(FWeight_vect.last()) + " [kg]");
+    }
+    else if(value == "ACMass")
+    {
+        ACMass_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(ACtualMass_vect.last()) + " [kg]");
+    }
+    else if(value == "Distance")
+    {
+        DIST_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(DIST_vect.last()) + " [NM]");
+    }
+    else if(value == "Air Temperature")
+    {
+        T_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(T_vect.last()) + " [K]");
+    }
+    else if(value == "Air Pressure")
+    {
+        p_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(p_vect.last()) + " [Pa]");
+    }
+    else if(value == "Air Density")
+    {
+        ro_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(ro_vect.last()) + " [kg/m3]");
+    }
+    else if(value == "Thrust")
+    {
+        THR_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(THR_vect.last()) + " [N]");
+    }
+    else if(value == "Drag")
+    {
+        D_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(D_vect.last()) + " [N]");
+    }
+    else if(value == "Mach")
+    {
+        MACH_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(MACH_vect.last()) + " [-]");
+    }
+    else if(value == "Energy Share Factor")
+    {
+        fM_line->attach(qwtPlot);
+        addTextLabel(qwtPlot, QString::number(fM_vect.last()) + " [-]");
+    }
+
+
+
+
+
     if(Hp_vect.size()>= points)
     {
-        QwtPlotCurve *Hp_line = new QwtPlotCurve("Hp");
-        Hp_line->setPen(redPen);
         Hp_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), Hp_vect.mid(Hp_vect.size()-points, points));
-
-        QwtPlotCurve *ROCD_line = new QwtPlotCurve("ROCD");
-        ROCD_line->setPen(redPen);
         ROCD_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), ROCD_vect.mid(ROCD_vect.size()-points, points));
-
-        QwtPlotCurve *CAS_line = new QwtPlotCurve("CAS");
-        CAS_line->setPen(redPen);
         CAS_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), CAS_vect.mid(CAS_vect.size()-points, points));
-
-        QwtPlotCurve *TAS_line = new QwtPlotCurve("TAS");
-        TAS_line->setPen(bluePen);
         TAS_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), TAS_vect.mid(TAS_vect.size()-points, points));
-
-        QwtPlotCurve *GRAD_line = new QwtPlotCurve("Grad");
-        GRAD_line->setPen(redPen);
         GRAD_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), GRAD_vect.mid(GRAD_vect.size()-points, points));
-
-        QwtPlotCurve *FFlow_line = new QwtPlotCurve("FFlow");
-        FFlow_line->setPen(redPen);
         FFlow_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), FFLow_vect.mid(FFLow_vect.size()-points, points));
-
-        QwtPlotCurve *ACMass_line = new QwtPlotCurve("ACMass");
-        ACMass_line->setPen(redPen);
+        FWeight_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), FWeight_vect.mid(FWeight_vect.size()-points, points));
         ACMass_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), ACtualMass_vect.mid(ACtualMass_vect.size()-points, points));
-
-        if(value == "Hp")
-        {
-            Hp_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(Hp_vect.last()) + " [ft]");
-        }
-        else if(value == "ROCD")
-        {
-            ROCD_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(ROCD_vect.last()) + " [ft/min]");
-        }
-        else if(value == "CAS/TAS")
-        {
-            CAS_line->attach(qwtPlot);
-            TAS_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(CAS_vect.last()) + "/" + QString::number(TAS_vect.last()) + " [kt]");
-        }
-        else if(value == "GRAD")
-        {
-            GRAD_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(GRAD_vect.last()) + " [°]");
-        }
-        else if(value == "FFLow")
-        {
-            FFlow_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(FFLow_vect.last()) + " [kg/s]");
-        }
-        else if(value == "ACMass")
-        {
-            ACMass_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(ACtualMass_vect.last()) + " [kg]");
-        }
+        DIST_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), DIST_vect.mid(DIST_vect.size()-points, points));
+        T_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), T_vect.mid(T_vect.size()-points, points));
+        p_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), p_vect.mid(p_vect.size()-points, points));
+        ro_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), ro_vect.mid(ro_vect.size()-points, points));
+        THR_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), THR_vect.mid(THR_vect.size()-points, points));
+        D_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), D_vect.mid(D_vect.size()-points, points));
+        MACH_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), MACH_vect.mid(MACH_vect.size()-points, points));
+        fM_line->setSamples(TIME_vect.mid(TIME_vect.size()-points, points), fM_vect.mid(fM_vect.size()-points, points));
     }
     else
     {
-        QwtPlotCurve *Hp_line = new QwtPlotCurve("Hp");
-        Hp_line->setPen(redPen);
         Hp_line->setSamples(TIME_vect, Hp_vect);
-
-        QwtPlotCurve *ROCD_line = new QwtPlotCurve("ROCD");
-        ROCD_line->setPen(redPen);
         ROCD_line->setSamples(TIME_vect, ROCD_vect);
-
-        QwtPlotCurve *CAS_line = new QwtPlotCurve("CAS");
-        CAS_line->setPen(redPen);
         CAS_line->setSamples(TIME_vect, CAS_vect);
-
-        QwtPlotCurve *TAS_line = new QwtPlotCurve("TAS");
-        TAS_line->setPen(bluePen);
         TAS_line->setSamples(TIME_vect, TAS_vect);
-
-        QwtPlotCurve *GRAD_line = new QwtPlotCurve("Grad");
-        GRAD_line->setPen(redPen);
         GRAD_line->setSamples(TIME_vect, GRAD_vect);
-
-        QwtPlotCurve *FFlow_line = new QwtPlotCurve("FFlow");
-        FFlow_line->setPen(redPen);
         FFlow_line->setSamples(TIME_vect, FFLow_vect);
-
-        QwtPlotCurve *ACMass_line = new QwtPlotCurve("ACMass");
-        ACMass_line->setPen(redPen);
+        FWeight_line->setSamples(TIME_vect, FWeight_vect);
         ACMass_line->setSamples(TIME_vect, ACtualMass_vect);
-
-        if(value == "Hp")
-        {
-            Hp_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(Hp_vect.last()) + " [ft]");
-        }
-        else if(value == "ROCD")
-        {
-            ROCD_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(ROCD_vect.last()) + " [ft/min]");
-        }
-        else if(value == "CAS/TAS")
-        {
-            CAS_line->attach(qwtPlot);
-            TAS_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(CAS_vect.last()) + "/" + QString::number(TAS_vect.last()) + " [kt]");
-        }
-        else if(value == "GRAD")
-        {
-            GRAD_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(GRAD_vect.last()) + " [°]");
-        }
-        else if(value == "FFLow")
-        {
-            FFlow_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(FFLow_vect.last()) + " [kg/s]");
-        }
-        else if(value == "ACMass")
-        {
-            ACMass_line->attach(qwtPlot);
-            addTextLabel(qwtPlot, QString::number(ACtualMass_vect.last()) + " [kg]");
-        }
+        DIST_line->setSamples(TIME_vect, DIST_vect);
+        T_line->setSamples(TIME_vect, T_vect);
+        p_line->setSamples(TIME_vect, p_vect);
+        ro_line->setSamples(TIME_vect, ro_vect);
+        THR_line->setSamples(TIME_vect, THR_vect);
+        D_line->setSamples(TIME_vect, D_vect);
+        MACH_line->setSamples(TIME_vect, MACH_vect);
+        fM_line->setSamples(TIME_vect, fM_vect);
     }
 }
 
@@ -261,8 +289,8 @@ void Graph::addTextLabel(QwtPlot *qwtPlot, const QString &text)
 void Graph::receive_data(const QVector<double> &DATA)
 {
     //qDebug() << "Hp_actual =" << DATA[0] << "T =" << DATA[1] << "p =" << DATA[2] << "ro =" << DATA[3] << "CAS =" << DATA[4] << "TAS =" << DATA[5] << "Thr =" << DATA[6] << "D =" << DATA[7] << "mach =" << DATA[8]
-    //            << "fM =" << DATA[9] << "ROCD =" << DATA[10] << "time =" << DATA[11] << "dist =" << DATA[12] << "delta_Hp =" << DATA[13] << "grad =" << DATA[14] << "FFlow =" << DATA[15]
-    //            << "FWeigth =" << DATA[16] << "ActualACMass =" << DATA[17];
+    //         << "fM =" << DATA[9] << "ROCD =" << DATA[10] << "time =" << DATA[11] << "dist =" << DATA[12] << "delta_Hp =" << DATA[13] << "grad =" << DATA[14] << "FFlow =" << DATA[15]
+    //         << "FWeigth =" << DATA[16] << "ActualACMass =" << DATA[17] << "FWeight_total" << DATA[19];
 
     Hp_vect.append(DATA[0]);
     T_vect.append(DATA[1]);
@@ -289,7 +317,7 @@ void Graph::receive_data(const QVector<double> &DATA)
     DeltaHp_vect.append(DATA[13]);
     GRAD_vect.append(DATA[14]);
     FFLow_vect.append(DATA[15]);
-    FWeight_vect.append(DATA[16]);
+    FWeight_vect.append(DATA[19]);
     ACtualMass_vect.append(DATA[17]);
 
     drawGraph();

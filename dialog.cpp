@@ -1973,7 +1973,7 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c)
+QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &DIST, const double &FWeight_total, const double &time_c)
 {
     QVector<double> outVect;
 
@@ -2002,6 +2002,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             // tu sa udrziava konst CAS a pocita sa mach
             CAS = vCAS;                             // [kt]
             TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
+            mach = TAStoM(knotsTOmps(TAS),T);
             flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
             fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
         }
@@ -2048,10 +2049,10 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
 
         time = time_c;  // hodnota timera [s]
-        dist = getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual);    // [m]
+        dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
         delta_Hp = (ROCD / 60) * time;  // [ft]
 
-        grad = getGradient(ftTOm(delta_Hp),dist);
+        grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
 
         FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
 
@@ -2093,9 +2094,9 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;
 
         time = time_c;  // hodnota timera [s]
-        dist = getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual);    // [m]
+        dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
         delta_Hp = (ROCD / 60) * time;  // [ft]
-        grad = getGradient(ftTOm(delta_Hp),dist);
+        grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
 
         FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
 
@@ -2151,9 +2152,9 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
 
         time = time_c;  // hodnota timera [s]
-        dist = getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual);    // [m]
+        dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
 
-        delta_Hp = mTOft(qTan((grad/180)*PI) * dist);   // [ft]
+        delta_Hp = mTOft(qTan((grad/180)*PI) * NMtom(dist));   // [ft]
         ROCD = (delta_Hp/time) * 60;   // [ft/min]
 
         Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
@@ -2163,8 +2164,10 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         actualACMass = ACMass - FWeight;    // [kg]
     }
 
+    dist += DIST;
+
     outVect.clear();
-    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass;
+    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass << FWeight_total;
 
     return outVect;
 }
@@ -2211,9 +2214,11 @@ void Dialog::EmergencyDescent_selected()
 
 void Dialog::TimeOut()
 {
-    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, BankAngle_actual, timer_const);
+    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, BankAngle_actual, DIST_actual, FWeight_actual, timer_const);
     Hp_actual += vect[13];
     ACMass_actual = vect[18];
+    DIST_actual = vect[12];
+    FWeight_actual += vect[16];
 
     emit send_data(vect);   // send data from 1 calculation to graph dialog window
 }
@@ -2223,6 +2228,8 @@ void Dialog::start_clicked()
     graphWindow->show();
 
     timer_const = 1;    // timer in [s]
+    DIST_actual = 0;      // distance init value [NM]
+    FWeight_actual = 0;   // total FWeight value [kg]
 
     Hp_actual = ui->Hp_0LineEdit->text().toDouble();             // [ft]
     CAS_init = ui->CASLineEdit->text().toDouble();               // [kt]
