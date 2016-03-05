@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>550</width>
-    <height>515</height>
+    <height>573</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -42,7 +42,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox_2">
+    <widget class="QGroupBox" name="aircraftParam_gb">
      <property name="title">
       <string>Aircarft parameters:</string>
      </property>
@@ -317,7 +317,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox">
+    <widget class="QGroupBox" name="phaseOfFlight_gb">
      <property name="minimumSize">
       <size>
        <width>0</width>
@@ -325,7 +325,43 @@
       </size>
      </property>
      <property name="title">
-      <string>Type of Descent</string>
+      <string>Phase of Flight</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_25">
+      <item>
+       <widget class="QRadioButton" name="CLIMB_rb">
+        <property name="text">
+         <string>Climb</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="CRUISE_rb">
+        <property name="text">
+         <string>Cruise</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="DESCENT_rb">
+        <property name="text">
+         <string>Descent</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="typeOfFlight_gb">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Type of Descent/Climb</string>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_9">
       <item>
@@ -360,11 +396,22 @@
     </widget>
    </item>
    <item>
-    <widget class="QCheckBox" name="expediteChB">
-     <property name="text">
-      <string>expedite descent</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="horizontalLayout_26">
+     <item>
+      <widget class="QCheckBox" name="expediteChB">
+       <property name="text">
+        <string>expedite descent</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="reducedClimbPowerChB">
+       <property name="text">
+        <string>reduced climb power</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -497,7 +544,7 @@
      <item>
       <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Hp_0</string>
+        <string>Hp_init</string>
        </property>
       </widget>
      </item>

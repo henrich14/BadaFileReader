@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'dialog.ui'
 **
-** Created: Tue 1. Mar 21:52:53 2016
+** Created: Sat 5. Mar 14:41:49 2016
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -37,7 +37,7 @@ public:
     QLabel *label;
     QComboBox *ICAOcomboBox;
     QSpacerItem *horizontalSpacer_3;
-    QGroupBox *groupBox_2;
+    QGroupBox *aircraftParam_gb;
     QHBoxLayout *horizontalLayout_21;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *horizontalLayout_11;
@@ -83,13 +83,20 @@ public:
     QLabel *label_36;
     QLabel *label_34;
     QLabel *label_35;
-    QGroupBox *groupBox;
+    QGroupBox *phaseOfFlight_gb;
+    QHBoxLayout *horizontalLayout_25;
+    QRadioButton *CLIMB_rb;
+    QRadioButton *CRUISE_rb;
+    QRadioButton *DESCENT_rb;
+    QGroupBox *typeOfFlight_gb;
     QHBoxLayout *horizontalLayout_9;
     QRadioButton *CAS_MACH_rb;
     QRadioButton *ROCD_rb;
     QRadioButton *Gradient_rb;
     QRadioButton *EmergencyDescent_rb;
+    QHBoxLayout *horizontalLayout_26;
     QCheckBox *expediteChB;
+    QCheckBox *reducedClimbPowerChB;
     QHBoxLayout *horizontalLayout_6;
     QLabel *label_12;
     QLineEdit *ACMassLineEdit;
@@ -138,7 +145,7 @@ public:
     {
         if (Dialog->objectName().isEmpty())
             Dialog->setObjectName(QString::fromUtf8("Dialog"));
-        Dialog->resize(550, 515);
+        Dialog->resize(550, 573);
         verticalLayout_5 = new QVBoxLayout(Dialog);
         verticalLayout_5->setSpacing(6);
         verticalLayout_5->setContentsMargins(11, 11, 11, 11);
@@ -163,9 +170,9 @@ public:
 
         verticalLayout_5->addLayout(horizontalLayout_2);
 
-        groupBox_2 = new QGroupBox(Dialog);
-        groupBox_2->setObjectName(QString::fromUtf8("groupBox_2"));
-        horizontalLayout_21 = new QHBoxLayout(groupBox_2);
+        aircraftParam_gb = new QGroupBox(Dialog);
+        aircraftParam_gb->setObjectName(QString::fromUtf8("aircraftParam_gb"));
+        horizontalLayout_21 = new QHBoxLayout(aircraftParam_gb);
         horizontalLayout_21->setSpacing(6);
         horizontalLayout_21->setContentsMargins(11, 11, 11, 11);
         horizontalLayout_21->setObjectName(QString::fromUtf8("horizontalLayout_21"));
@@ -175,12 +182,12 @@ public:
         horizontalLayout_11 = new QHBoxLayout();
         horizontalLayout_11->setSpacing(6);
         horizontalLayout_11->setObjectName(QString::fromUtf8("horizontalLayout_11"));
-        label_18 = new QLabel(groupBox_2);
+        label_18 = new QLabel(aircraftParam_gb);
         label_18->setObjectName(QString::fromUtf8("label_18"));
 
         horizontalLayout_11->addWidget(label_18);
 
-        EngineLabel = new QLabel(groupBox_2);
+        EngineLabel = new QLabel(aircraftParam_gb);
         EngineLabel->setObjectName(QString::fromUtf8("EngineLabel"));
 
         horizontalLayout_11->addWidget(EngineLabel);
@@ -191,17 +198,17 @@ public:
         horizontalLayout_12 = new QHBoxLayout();
         horizontalLayout_12->setSpacing(6);
         horizontalLayout_12->setObjectName(QString::fromUtf8("horizontalLayout_12"));
-        label_25 = new QLabel(groupBox_2);
+        label_25 = new QLabel(aircraftParam_gb);
         label_25->setObjectName(QString::fromUtf8("label_25"));
 
         horizontalLayout_12->addWidget(label_25);
 
-        MassLowLabel = new QLabel(groupBox_2);
+        MassLowLabel = new QLabel(aircraftParam_gb);
         MassLowLabel->setObjectName(QString::fromUtf8("MassLowLabel"));
 
         horizontalLayout_12->addWidget(MassLowLabel);
 
-        label_28 = new QLabel(groupBox_2);
+        label_28 = new QLabel(aircraftParam_gb);
         label_28->setObjectName(QString::fromUtf8("label_28"));
 
         horizontalLayout_12->addWidget(label_28);
@@ -212,17 +219,17 @@ public:
         horizontalLayout_15 = new QHBoxLayout();
         horizontalLayout_15->setSpacing(6);
         horizontalLayout_15->setObjectName(QString::fromUtf8("horizontalLayout_15"));
-        label_19 = new QLabel(groupBox_2);
+        label_19 = new QLabel(aircraftParam_gb);
         label_19->setObjectName(QString::fromUtf8("label_19"));
 
         horizontalLayout_15->addWidget(label_19);
 
-        VmoLabel = new QLabel(groupBox_2);
+        VmoLabel = new QLabel(aircraftParam_gb);
         VmoLabel->setObjectName(QString::fromUtf8("VmoLabel"));
 
         horizontalLayout_15->addWidget(VmoLabel);
 
-        label_22 = new QLabel(groupBox_2);
+        label_22 = new QLabel(aircraftParam_gb);
         label_22->setObjectName(QString::fromUtf8("label_22"));
 
         horizontalLayout_15->addWidget(label_22);
@@ -239,12 +246,12 @@ public:
         horizontalLayout_18 = new QHBoxLayout();
         horizontalLayout_18->setSpacing(6);
         horizontalLayout_18->setObjectName(QString::fromUtf8("horizontalLayout_18"));
-        label_31 = new QLabel(groupBox_2);
+        label_31 = new QLabel(aircraftParam_gb);
         label_31->setObjectName(QString::fromUtf8("label_31"));
 
         horizontalLayout_18->addWidget(label_31);
 
-        WakeLabel = new QLabel(groupBox_2);
+        WakeLabel = new QLabel(aircraftParam_gb);
         WakeLabel->setObjectName(QString::fromUtf8("WakeLabel"));
 
         horizontalLayout_18->addWidget(WakeLabel);
@@ -255,17 +262,17 @@ public:
         horizontalLayout_13 = new QHBoxLayout();
         horizontalLayout_13->setSpacing(6);
         horizontalLayout_13->setObjectName(QString::fromUtf8("horizontalLayout_13"));
-        label_26 = new QLabel(groupBox_2);
+        label_26 = new QLabel(aircraftParam_gb);
         label_26->setObjectName(QString::fromUtf8("label_26"));
 
         horizontalLayout_13->addWidget(label_26);
 
-        MassNomLabel = new QLabel(groupBox_2);
+        MassNomLabel = new QLabel(aircraftParam_gb);
         MassNomLabel->setObjectName(QString::fromUtf8("MassNomLabel"));
 
         horizontalLayout_13->addWidget(MassNomLabel);
 
-        label_29 = new QLabel(groupBox_2);
+        label_29 = new QLabel(aircraftParam_gb);
         label_29->setObjectName(QString::fromUtf8("label_29"));
 
         horizontalLayout_13->addWidget(label_29);
@@ -276,17 +283,17 @@ public:
         horizontalLayout_16 = new QHBoxLayout();
         horizontalLayout_16->setSpacing(6);
         horizontalLayout_16->setObjectName(QString::fromUtf8("horizontalLayout_16"));
-        label_20 = new QLabel(groupBox_2);
+        label_20 = new QLabel(aircraftParam_gb);
         label_20->setObjectName(QString::fromUtf8("label_20"));
 
         horizontalLayout_16->addWidget(label_20);
 
-        MmoLabel = new QLabel(groupBox_2);
+        MmoLabel = new QLabel(aircraftParam_gb);
         MmoLabel->setObjectName(QString::fromUtf8("MmoLabel"));
 
         horizontalLayout_16->addWidget(MmoLabel);
 
-        label_23 = new QLabel(groupBox_2);
+        label_23 = new QLabel(aircraftParam_gb);
         label_23->setObjectName(QString::fromUtf8("label_23"));
 
         horizontalLayout_16->addWidget(label_23);
@@ -303,17 +310,17 @@ public:
         horizontalLayout_19 = new QHBoxLayout();
         horizontalLayout_19->setSpacing(6);
         horizontalLayout_19->setObjectName(QString::fromUtf8("horizontalLayout_19"));
-        label_32 = new QLabel(groupBox_2);
+        label_32 = new QLabel(aircraftParam_gb);
         label_32->setObjectName(QString::fromUtf8("label_32"));
 
         horizontalLayout_19->addWidget(label_32);
 
-        WingSpanLabel = new QLabel(groupBox_2);
+        WingSpanLabel = new QLabel(aircraftParam_gb);
         WingSpanLabel->setObjectName(QString::fromUtf8("WingSpanLabel"));
 
         horizontalLayout_19->addWidget(WingSpanLabel);
 
-        label_37 = new QLabel(groupBox_2);
+        label_37 = new QLabel(aircraftParam_gb);
         label_37->setObjectName(QString::fromUtf8("label_37"));
 
         horizontalLayout_19->addWidget(label_37);
@@ -324,17 +331,17 @@ public:
         horizontalLayout_14 = new QHBoxLayout();
         horizontalLayout_14->setSpacing(6);
         horizontalLayout_14->setObjectName(QString::fromUtf8("horizontalLayout_14"));
-        label_27 = new QLabel(groupBox_2);
+        label_27 = new QLabel(aircraftParam_gb);
         label_27->setObjectName(QString::fromUtf8("label_27"));
 
         horizontalLayout_14->addWidget(label_27);
 
-        MassHighLabel = new QLabel(groupBox_2);
+        MassHighLabel = new QLabel(aircraftParam_gb);
         MassHighLabel->setObjectName(QString::fromUtf8("MassHighLabel"));
 
         horizontalLayout_14->addWidget(MassHighLabel);
 
-        label_30 = new QLabel(groupBox_2);
+        label_30 = new QLabel(aircraftParam_gb);
         label_30->setObjectName(QString::fromUtf8("label_30"));
 
         horizontalLayout_14->addWidget(label_30);
@@ -345,17 +352,17 @@ public:
         horizontalLayout_17 = new QHBoxLayout();
         horizontalLayout_17->setSpacing(6);
         horizontalLayout_17->setObjectName(QString::fromUtf8("horizontalLayout_17"));
-        label_21 = new QLabel(groupBox_2);
+        label_21 = new QLabel(aircraftParam_gb);
         label_21->setObjectName(QString::fromUtf8("label_21"));
 
         horizontalLayout_17->addWidget(label_21);
 
-        HmoLabel = new QLabel(groupBox_2);
+        HmoLabel = new QLabel(aircraftParam_gb);
         HmoLabel->setObjectName(QString::fromUtf8("HmoLabel"));
 
         horizontalLayout_17->addWidget(HmoLabel);
 
-        label_24 = new QLabel(groupBox_2);
+        label_24 = new QLabel(aircraftParam_gb);
         label_24->setObjectName(QString::fromUtf8("label_24"));
 
         horizontalLayout_17->addWidget(label_24);
@@ -372,17 +379,17 @@ public:
         horizontalLayout_20 = new QHBoxLayout();
         horizontalLayout_20->setSpacing(6);
         horizontalLayout_20->setObjectName(QString::fromUtf8("horizontalLayout_20"));
-        label_33 = new QLabel(groupBox_2);
+        label_33 = new QLabel(aircraftParam_gb);
         label_33->setObjectName(QString::fromUtf8("label_33"));
 
         horizontalLayout_20->addWidget(label_33);
 
-        ACLengthLabel = new QLabel(groupBox_2);
+        ACLengthLabel = new QLabel(aircraftParam_gb);
         ACLengthLabel->setObjectName(QString::fromUtf8("ACLengthLabel"));
 
         horizontalLayout_20->addWidget(ACLengthLabel);
 
-        label_36 = new QLabel(groupBox_2);
+        label_36 = new QLabel(aircraftParam_gb);
         label_36->setObjectName(QString::fromUtf8("label_36"));
 
         horizontalLayout_20->addWidget(label_36);
@@ -390,12 +397,12 @@ public:
 
         verticalLayout_4->addLayout(horizontalLayout_20);
 
-        label_34 = new QLabel(groupBox_2);
+        label_34 = new QLabel(aircraftParam_gb);
         label_34->setObjectName(QString::fromUtf8("label_34"));
 
         verticalLayout_4->addWidget(label_34);
 
-        label_35 = new QLabel(groupBox_2);
+        label_35 = new QLabel(aircraftParam_gb);
         label_35->setObjectName(QString::fromUtf8("label_35"));
 
         verticalLayout_4->addWidget(label_35);
@@ -404,42 +411,78 @@ public:
         horizontalLayout_21->addLayout(verticalLayout_4);
 
 
-        verticalLayout_5->addWidget(groupBox_2);
+        verticalLayout_5->addWidget(aircraftParam_gb);
 
-        groupBox = new QGroupBox(Dialog);
-        groupBox->setObjectName(QString::fromUtf8("groupBox"));
-        groupBox->setMinimumSize(QSize(0, 50));
-        horizontalLayout_9 = new QHBoxLayout(groupBox);
+        phaseOfFlight_gb = new QGroupBox(Dialog);
+        phaseOfFlight_gb->setObjectName(QString::fromUtf8("phaseOfFlight_gb"));
+        phaseOfFlight_gb->setMinimumSize(QSize(0, 50));
+        horizontalLayout_25 = new QHBoxLayout(phaseOfFlight_gb);
+        horizontalLayout_25->setSpacing(6);
+        horizontalLayout_25->setContentsMargins(11, 11, 11, 11);
+        horizontalLayout_25->setObjectName(QString::fromUtf8("horizontalLayout_25"));
+        CLIMB_rb = new QRadioButton(phaseOfFlight_gb);
+        CLIMB_rb->setObjectName(QString::fromUtf8("CLIMB_rb"));
+
+        horizontalLayout_25->addWidget(CLIMB_rb);
+
+        CRUISE_rb = new QRadioButton(phaseOfFlight_gb);
+        CRUISE_rb->setObjectName(QString::fromUtf8("CRUISE_rb"));
+
+        horizontalLayout_25->addWidget(CRUISE_rb);
+
+        DESCENT_rb = new QRadioButton(phaseOfFlight_gb);
+        DESCENT_rb->setObjectName(QString::fromUtf8("DESCENT_rb"));
+
+        horizontalLayout_25->addWidget(DESCENT_rb);
+
+
+        verticalLayout_5->addWidget(phaseOfFlight_gb);
+
+        typeOfFlight_gb = new QGroupBox(Dialog);
+        typeOfFlight_gb->setObjectName(QString::fromUtf8("typeOfFlight_gb"));
+        typeOfFlight_gb->setMinimumSize(QSize(0, 50));
+        horizontalLayout_9 = new QHBoxLayout(typeOfFlight_gb);
         horizontalLayout_9->setSpacing(6);
         horizontalLayout_9->setContentsMargins(11, 11, 11, 11);
         horizontalLayout_9->setObjectName(QString::fromUtf8("horizontalLayout_9"));
-        CAS_MACH_rb = new QRadioButton(groupBox);
+        CAS_MACH_rb = new QRadioButton(typeOfFlight_gb);
         CAS_MACH_rb->setObjectName(QString::fromUtf8("CAS_MACH_rb"));
 
         horizontalLayout_9->addWidget(CAS_MACH_rb);
 
-        ROCD_rb = new QRadioButton(groupBox);
+        ROCD_rb = new QRadioButton(typeOfFlight_gb);
         ROCD_rb->setObjectName(QString::fromUtf8("ROCD_rb"));
 
         horizontalLayout_9->addWidget(ROCD_rb);
 
-        Gradient_rb = new QRadioButton(groupBox);
+        Gradient_rb = new QRadioButton(typeOfFlight_gb);
         Gradient_rb->setObjectName(QString::fromUtf8("Gradient_rb"));
 
         horizontalLayout_9->addWidget(Gradient_rb);
 
-        EmergencyDescent_rb = new QRadioButton(groupBox);
+        EmergencyDescent_rb = new QRadioButton(typeOfFlight_gb);
         EmergencyDescent_rb->setObjectName(QString::fromUtf8("EmergencyDescent_rb"));
 
         horizontalLayout_9->addWidget(EmergencyDescent_rb);
 
 
-        verticalLayout_5->addWidget(groupBox);
+        verticalLayout_5->addWidget(typeOfFlight_gb);
 
+        horizontalLayout_26 = new QHBoxLayout();
+        horizontalLayout_26->setSpacing(6);
+        horizontalLayout_26->setObjectName(QString::fromUtf8("horizontalLayout_26"));
         expediteChB = new QCheckBox(Dialog);
         expediteChB->setObjectName(QString::fromUtf8("expediteChB"));
 
-        verticalLayout_5->addWidget(expediteChB);
+        horizontalLayout_26->addWidget(expediteChB);
+
+        reducedClimbPowerChB = new QCheckBox(Dialog);
+        reducedClimbPowerChB->setObjectName(QString::fromUtf8("reducedClimbPowerChB"));
+
+        horizontalLayout_26->addWidget(reducedClimbPowerChB);
+
+
+        verticalLayout_5->addLayout(horizontalLayout_26);
 
         horizontalLayout_6 = new QHBoxLayout();
         horizontalLayout_6->setSpacing(6);
@@ -673,7 +716,7 @@ public:
     {
         Dialog->setWindowTitle(QApplication::translate("Dialog", "Dialog", 0, QApplication::UnicodeUTF8));
         label->setText(QApplication::translate("Dialog", "ICAO File code:", 0, QApplication::UnicodeUTF8));
-        groupBox_2->setTitle(QApplication::translate("Dialog", "Aircarft parameters:", 0, QApplication::UnicodeUTF8));
+        aircraftParam_gb->setTitle(QApplication::translate("Dialog", "Aircarft parameters:", 0, QApplication::UnicodeUTF8));
         label_18->setText(QApplication::translate("Dialog", "Engine:", 0, QApplication::UnicodeUTF8));
         EngineLabel->setText(QApplication::translate("Dialog", "jet", 0, QApplication::UnicodeUTF8));
         label_25->setText(QApplication::translate("Dialog", "Mass_low:", 0, QApplication::UnicodeUTF8));
@@ -704,12 +747,17 @@ public:
         label_36->setText(QApplication::translate("Dialog", "[m]", 0, QApplication::UnicodeUTF8));
         label_34->setText(QString());
         label_35->setText(QString());
-        groupBox->setTitle(QApplication::translate("Dialog", "Type of Descent", 0, QApplication::UnicodeUTF8));
+        phaseOfFlight_gb->setTitle(QApplication::translate("Dialog", "Phase of Flight", 0, QApplication::UnicodeUTF8));
+        CLIMB_rb->setText(QApplication::translate("Dialog", "Climb", 0, QApplication::UnicodeUTF8));
+        CRUISE_rb->setText(QApplication::translate("Dialog", "Cruise", 0, QApplication::UnicodeUTF8));
+        DESCENT_rb->setText(QApplication::translate("Dialog", "Descent", 0, QApplication::UnicodeUTF8));
+        typeOfFlight_gb->setTitle(QApplication::translate("Dialog", "Type of Descent/Climb", 0, QApplication::UnicodeUTF8));
         CAS_MACH_rb->setText(QApplication::translate("Dialog", "CAS/MACH", 0, QApplication::UnicodeUTF8));
         ROCD_rb->setText(QApplication::translate("Dialog", "ROCD", 0, QApplication::UnicodeUTF8));
         Gradient_rb->setText(QApplication::translate("Dialog", "Gradient", 0, QApplication::UnicodeUTF8));
         EmergencyDescent_rb->setText(QApplication::translate("Dialog", "Emergency descent", 0, QApplication::UnicodeUTF8));
         expediteChB->setText(QApplication::translate("Dialog", "expedite descent", 0, QApplication::UnicodeUTF8));
+        reducedClimbPowerChB->setText(QApplication::translate("Dialog", "reduced climb power", 0, QApplication::UnicodeUTF8));
         label_12->setText(QApplication::translate("Dialog", "ACMass", 0, QApplication::UnicodeUTF8));
         label_13->setText(QApplication::translate("Dialog", "[kg]", 0, QApplication::UnicodeUTF8));
         label_2->setText(QApplication::translate("Dialog", "CAS", 0, QApplication::UnicodeUTF8));
@@ -722,7 +770,7 @@ public:
         label_8->setText(QApplication::translate("Dialog", "[-]", 0, QApplication::UnicodeUTF8));
         label_38->setText(QApplication::translate("Dialog", "BANK angle", 0, QApplication::UnicodeUTF8));
         label_39->setText(QApplication::translate("Dialog", "[\302\260]", 0, QApplication::UnicodeUTF8));
-        label_4->setText(QApplication::translate("Dialog", "Hp_0", 0, QApplication::UnicodeUTF8));
+        label_4->setText(QApplication::translate("Dialog", "Hp_init", 0, QApplication::UnicodeUTF8));
         label_9->setText(QApplication::translate("Dialog", "[ft]", 0, QApplication::UnicodeUTF8));
         label_5->setText(QApplication::translate("Dialog", "Hp_n", 0, QApplication::UnicodeUTF8));
         label_10->setText(QApplication::translate("Dialog", "[ft]", 0, QApplication::UnicodeUTF8));

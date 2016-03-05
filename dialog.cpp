@@ -39,6 +39,9 @@ const double H_Hp0 = (1/betaT_less) * (T0 - T_ISA_MSL + deltaT * qLn(T0 / T_ISA_
 const double Hp_trop = 11000; // [m] altitude of tropopause
 ///////////////////////////////////////////
 
+/////////// AIRPORT PARAMETERS ///////////
+const double rwyElev = 1500; // [ft] geopotential pressure altitude (altitude AMSL)
+
 
 /////// GLOBAL AIRCRAFT PARAMETERS ///////
 // descend speed increment [KCAS = CAS in kt]
@@ -83,22 +86,27 @@ Dialog::Dialog(QWidget *parent) :
 
     readSynomymFile();
 
-    ui->CAS_MACH_rb->setChecked(true);
+    ui->DESCENT_rb->setChecked(true);
+    typeOfFlight_changed();
+
     ui->ACMassLineEdit->setText("65300");
     ui->CASLineEdit->setText("290");
     ui->ROCDLineEdit->setText("-1500");
     ui->GradientLineEdit->setText("-3");
     ui->MachLineEdit->setText("0.78");
-    ui->Hp_0LineEdit->setText("38000");
-    ui->Hp_nLineEdit->setText("0");
-    ui->delta_HpLineEdit->setText("2000");
-    ui->BankAngleLineEdit->setText("15");
+    ui->Hp_0LineEdit->setText("20000");
+    ui->Hp_nLineEdit->setText("38000");
+    ui->delta_HpLineEdit->setText("1000");
+    ui->BankAngleLineEdit->setText("0");
 
     ui->ROCDLineEdit->setEnabled(false);
     ui->GradientLineEdit->setEnabled(false);
 
     timer = new QTimer(this);
 
+    connect(ui->CLIMB_rb, SIGNAL(clicked()), this, SLOT(typeOfFlight_changed()));
+    connect(ui->DESCENT_rb, SIGNAL(clicked()), this, SLOT(typeOfFlight_changed()));
+    connect(ui->CRUISE_rb, SIGNAL(clicked()), this, SLOT(typeOfFlight_changed()));
     connect(ui->parsePushButton, SIGNAL(clicked()), this, SLOT(parse_clicked()));
     connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(CASMACH_selected()));
     connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
@@ -118,6 +126,45 @@ Dialog::Dialog(QWidget *parent) :
 Dialog::~Dialog()
 {
     delete ui;
+}
+
+void Dialog::typeOfFlight_changed()
+{
+    if(ui->DESCENT_rb->isChecked())
+    {
+        activePhaseOfFlight = "DESCENT";
+
+        ui->CAS_MACH_rb->setChecked(true);
+        ui->Gradient_rb->show();
+        ui->EmergencyDescent_rb->show();
+
+        ui->expediteChB->setChecked(false);
+        ui->expediteChB->show();
+        ui->reducedClimbPowerChB->setChecked(false);
+        ui->reducedClimbPowerChB->hide();
+    }
+    else if(ui->CLIMB_rb->isChecked())
+    {
+        activePhaseOfFlight = "CLIMB";
+
+        ui->CAS_MACH_rb->setChecked(true);
+        ui->Gradient_rb->hide();
+        ui->EmergencyDescent_rb->hide();
+
+        ui->expediteChB->setChecked(false);
+        ui->expediteChB->hide();
+        ui->reducedClimbPowerChB->setChecked(false);
+        ui->reducedClimbPowerChB->show();
+    }
+    else if(ui->CRUISE_rb->isChecked())
+    {
+        activePhaseOfFlight = "CRUISE";
+
+        ui->expediteChB->setChecked(false);
+        ui->expediteChB->hide();
+        ui->reducedClimbPowerChB->setChecked(false);
+        ui->reducedClimbPowerChB->hide();
+    }
 }
 
 
@@ -800,7 +847,7 @@ double Dialog::calculateDrag(const double &m, const double &ro, const double &vT
     // input weight [kg]; air density [kg/m^3]; TAS [m/s]; bank angle [°]; config [CR / AP / LD]
     // output drug [N]
 
-    double CL = (2 * m * g0) / (ro * vTAS*vTAS * S * qCos(bankAngle));
+    double CL = (2 * m * g0) / (ro * vTAS*vTAS * S * qCos(d2r(bankAngle)));
     double CD, D;
 
     if(C_D0["AP"] == 0 || C_D0["LD"] == 0 || C_D2["AP"] == 0 || C_D2["LD"] == 0 || C_D0deltaLDG == 0)
@@ -836,49 +883,51 @@ double Dialog::calculateDrag(const double &m, const double &ro, const double &vT
     return D;
 }
 
-QString Dialog::getFlightConfiguration(const QString &phase, const double &altitude, const double &vCAS)
+QString Dialog::getFlightConfiguration(const QString &phase, const double &altitude, const double &rwyElevation, const double &vCAS)
 {
-    // input CAS [kt], altitude [ft], phase [CLIMB / DESCENT]
+    // input CAS [kt]; altitude [ft]; rwyElevation [ft]; phase [CLIMB / DESCENT]
     // output flightConfiguration [TO / IC / CR / AP / LD]
 
     QString flightConfig = "DEFAULT";
     double v_min_cruise = calculateVmin("CR");
     double v_min_approach = calculateVmin("AP");
 
+    double ALT = altitude - rwyElevation;   // elevatoin above the RWY
+
     if(phase == "CLIMB")
     {
-        if(altitude <= H_max_TO)
+        if(ALT <= H_max_TO)
         {
             flightConfig = "TO";
         }
-        else if(altitude > H_max_TO && altitude <= H_max_IC)
+        else if(ALT > H_max_TO && ALT <= H_max_IC)
         {
             flightConfig = "IC";
         }
-        else if(altitude > H_max_IC)
+        else if(ALT > H_max_IC)
         {
             flightConfig = "CR";
         }
     }
     else if(phase == "DESCENT")
     {
-        if(altitude >= H_max_AP)
+        if(ALT >= H_max_AP)
         {
             flightConfig = "CR";
         }
-        else if(altitude <= H_max_AP && vCAS >= v_min_cruise + 10)
+        else if(ALT <= H_max_AP && vCAS >= v_min_cruise + 10)
         {
             flightConfig = "CR";
         }
-        else if((altitude < H_max_AP && altitude > H_max_LD) && vCAS < v_min_cruise + 10)
+        else if((ALT < H_max_AP && ALT > H_max_LD) && vCAS < v_min_cruise + 10)
         {
             flightConfig = "AP";
         }
-        else if(altitude <= H_max_LD && ((vCAS < v_min_cruise + 10) && (vCAS >= v_min_approach + 10)))
+        else if(ALT <= H_max_LD && ((vCAS < v_min_cruise + 10) && (vCAS >= v_min_approach + 10)))
         {
             flightConfig = "AP";
         }
-        else if(altitude <= H_max_LD && vCAS < v_min_approach + 10)
+        else if(ALT <= H_max_LD && vCAS < v_min_approach + 10)
         {
             flightConfig = "LD";
         }
@@ -1529,16 +1578,30 @@ double Dialog::d2r(const double &deg)
     return rad;
 }
 
-double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor)
+double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor, const double &C_pow_red, const QString &phase)
 {
     // calculate the ROCD  - speed and throttle controlled, speed is maintained at some constant CAS or M
-    // input phase [CRUISE / APPROACH / LANDING];
+    // input T[K]; TAS [m/s]; Thrust [N]; Drag [N]; m [kg]; fM [-]; phase [CRUISE / DESCENT / CLIMB];
     // input factor [[CONSTANT_MACH_ABOVE_TROPOPAUSE / CONSTANT_MACH_BELOW_TROPOPAUSE / CONSTANT_CAS_BELOW_TROPOPAUSE / CONSTANT_CAS_ABOVE_TROPOPAUSE / ACCELERATION_IN_DESCENT / DECELERATION_IN_DECENT]]
     // output ROCD [m/s]
 
     double ROCD = 0.0;
 
-    ROCD = ((T-deltaT)/T) * (((thrust - drag)*vTAS)/(m*g0)) * shareFactor;
+    if(phase == "DESCENT")
+    {
+        ROCD = ((T-deltaT)/T) * (((thrust - drag)*vTAS)/(m*g0)) * shareFactor;
+    }
+    else if(phase == "CLIMB")
+    {
+        if(ui->reducedClimbPowerChB->isChecked())
+        {
+            ROCD = ((T-deltaT)/T) * (((thrust - drag)*vTAS*C_pow_red)/(m*g0)) * shareFactor;
+        }
+        else
+        {
+            ROCD = ((T-deltaT)/T) * (((thrust - drag)*vTAS)/(m*g0)) * shareFactor;
+        }
+    }
 
     return ROCD;
 }
@@ -1557,6 +1620,7 @@ void Dialog::run()
     double lastHp = ui->Hp_nLineEdit->text().toDouble();
     double delta_Hp = ui->delta_HpLineEdit->text().toDouble();
     double BankAngle_actual = ui->BankAngleLineEdit->text().toDouble();
+    double C_pow_red = 1;
 
     bool expedite;
     if(ui->expediteChB->isChecked())
@@ -1568,12 +1632,23 @@ void Dialog::run()
     bool maxCASLimitReached = false;
     bool maxAltLimitReached = false;
 
-    double steps = (initHp-lastHp) / delta_Hp;
+    double steps = abs(initHp-lastHp) / delta_Hp;
 
     QVector<double> Hp_vect, CAS_vect, MACH_vect, TAS_vect, ROCD_vect, TIME_vect, DIST_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, ACMass_vect, Thr_vect, D_vect, fM_vect;
     for(int i=0; i<=steps; i++)
     {
-        Hp_vect << initHp - i*delta_Hp;     // vector vysok [ft]
+        if(activePhaseOfFlight == "DESCENT")
+        {
+            Hp_vect << initHp - i*delta_Hp;     // vector vysok [ft]
+        }
+        else if(activePhaseOfFlight == "CLIMB")
+        {
+            Hp_vect << initHp + i*delta_Hp;     // vector vysok [ft]
+        }
+        else if(activePhaseOfFlight == "CRUISE")
+        {
+            Hp_vect << initHp + i*delta_Hp;     // vector vysok [ft]
+        }
     }
 
     ACMass_vect << actualACMass;
@@ -1596,6 +1671,8 @@ void Dialog::run()
             p = airPressureDetermination(ftTOm(Hp_vect.at(i)));
             ro = airDensityDetermination(T,p);
 
+            C_pow_red = calculateReducedClimbPower(Hp_vect.at(i), actualACMass, EngineType);
+
             if(Hp_vect.at(i) <= minAlt)
             {
                 // tu sa udrziava konst CAS a pocita sa mach
@@ -1603,7 +1680,7 @@ void Dialog::run()
                 CAS_vect << CAS;
                 TAS = CAStoTAS(knotsTOmps(CAS),p,ro);
                 TAS_vect << mpsTOknots(TAS);
-                flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
+                flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, CAS);
 
                 mach = TAStoM(TAS,T);
                 MACH_vect << mach;
@@ -1632,7 +1709,7 @@ void Dialog::run()
                     TAS_vect << mpsTOknots(TAS);
                     CAS = TAStoCAS(TAS,p,ro);
                     CAS_vect << mpsTOknots(CAS);
-                    flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
+                    flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, mpsTOknots(CAS));
 
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
                     fM_vect << fM;
@@ -1653,7 +1730,7 @@ void Dialog::run()
                     CAS_vect << CAS;
                     TAS = CAStoTAS(knotsTOmps(CAS),p,ro);
                     TAS_vect << mpsTOknots(TAS);
-                    flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
+                    flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, CAS);
 
                     mach = TAStoM(TAS,T);
                     MACH_vect << mach;
@@ -1684,7 +1761,7 @@ void Dialog::run()
                 TAS_vect << mpsTOknots(TAS);
                 CAS = TAStoCAS(TAS,p,ro);
                 CAS_vect << mpsTOknots(CAS);
-                flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
+                flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, mpsTOknots(CAS));
 
                 // test the min speed and buffeting speed limits for Jet, test altitude
                 double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
@@ -1698,12 +1775,21 @@ void Dialog::run()
             }
 
             Thr_max_climb = calculateMaxClimbThrust(Hp_vect.at(i), mpsTOknots(TAS), EngineType);
-            Thr = calculateDescentThrust(Hp_vect.at(i),Thr_max_climb, flightConfig);
-            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
+
+            if(activePhaseOfFlight == "DESCENT")
+            {
+                Thr = calculateDescentThrust(Hp_vect.at(i),Thr_max_climb, flightConfig);
+            }
+            else if(activePhaseOfFlight == "CLIMB")
+            {
+                Thr = Thr_max_climb;
+            }
+
+            D = calculateDrag(actualACMass, ro, TAS, BankAngle_actual, flightConfig, expedite);
             Thr_vect << Thr;
             D_vect << D;
 
-            ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM);
+            ROCD = ROCDcalc(T,TAS,Thr, D, actualACMass, fM, C_pow_red, activePhaseOfFlight);
             ROCD_vect << mpsTOftpmin(ROCD);
 
             time = getFlightTime(qAbs(mpsTOftpmin(ROCD)), delta_Hp);
@@ -1715,9 +1801,7 @@ void Dialog::run()
             grad = getGradient(ftTOm(delta_Hp),dist);
             GRAD_vect << grad;
 
-            qDebug() << "Hp=" << Hp_vect.at(i) << "TAS=" << mpsTOknots(TAS) << "CAS=" << mpsTOknots(CAS) << "ROCD=" << mpsTOftpmin(ROCD) << "time=" << time << "dist" << dist << "BA" << BankAngle_actual;
-
-            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), activePhaseOfFlight, flightConfig, EngineType, true) / 60; // in [kg/s]
             FUELFLOW_vect << FFlow;
 
             FWeight = fuelWeight(FFlow, time);
@@ -1735,16 +1819,18 @@ void Dialog::run()
             p = airPressureDetermination(ftTOm(Hp_vect.at(i)));
             ro = airDensityDetermination(T,p);
 
+            C_pow_red = calculateReducedClimbPower(Hp_vect.at(i), actualACMass, EngineType);
+
             CAS = initCAS;
             CAS_vect << CAS;
             TAS = CAStoTAS(knotsTOmps(CAS),p,ro);
             TAS_vect << mpsTOknots(TAS);
-            flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
+            flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, CAS);
 
             mach = TAStoM(TAS,T);
             MACH_vect << mach;
 
-            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
+            D = calculateDrag(actualACMass, ro, TAS, BankAngle_actual, flightConfig, expedite);
             D_vect << D;
 
             // test the min speed and buffeting speed limits for Jet, test altitude
@@ -1783,7 +1869,15 @@ void Dialog::run()
             fM_vect << fM;
             ROCD_vect << initROCD;
 
-            Thr = (ftpminTOmps(initROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
+            if(activePhaseOfFlight == "DESCENT")
+            {
+                Thr = (ftpminTOmps(initROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
+            }
+            else if(activePhaseOfFlight == "CLIMB")
+            {
+                Thr = (ftpminTOmps(initROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/(TAS*C_pow_red)) + D;  // musim dopocitat tah z ROCD
+            }
+
             Thr_vect << Thr;
 
             time = getFlightTime(qAbs(initROCD), delta_Hp);
@@ -1795,7 +1889,7 @@ void Dialog::run()
             grad = getGradient(ftTOm(delta_Hp),dist);
             GRAD_vect << grad;
 
-            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
+            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), activePhaseOfFlight, flightConfig, EngineType, false) / 60; // in [kg/s]
             FUELFLOW_vect << FFlow;
 
             FWeight = fuelWeight(FFlow, time);
@@ -1820,7 +1914,7 @@ void Dialog::run()
                 CAS_vect << CAS;
                 TAS = CAStoTAS(knotsTOmps(CAS),p,ro);
                 TAS_vect << mpsTOknots(TAS);
-                flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
+                flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, CAS);
 
                 mach = TAStoM(TAS,T);
                 MACH_vect << mach;
@@ -1849,7 +1943,7 @@ void Dialog::run()
                     TAS_vect << mpsTOknots(TAS);
                     CAS = TAStoCAS(TAS,p,ro);
                     CAS_vect << mpsTOknots(CAS);
-                    flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
+                    flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, mpsTOknots(CAS));
 
                     fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
                     fM_vect << fM;
@@ -1870,7 +1964,7 @@ void Dialog::run()
                     CAS_vect << CAS;
                     TAS = CAStoTAS(knotsTOmps(CAS),p,ro);
                     TAS_vect << mpsTOknots(TAS);
-                    flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), CAS);
+                    flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, CAS);
 
                     mach = TAStoM(TAS,T);
                     MACH_vect << mach;
@@ -1901,7 +1995,7 @@ void Dialog::run()
                 TAS_vect << mpsTOknots(TAS);
                 CAS = TAStoCAS(TAS,p,ro);
                 CAS_vect << mpsTOknots(CAS);
-                flightConfig = getFlightConfiguration("DESCENT", Hp_vect.at(i), mpsTOknots(CAS));
+                flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, mpsTOknots(CAS));
 
                 // test the min speed and buffeting speed limits for Jet, test altitude
                 double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
@@ -1914,7 +2008,7 @@ void Dialog::run()
                 validationTests(EngineType, actualACMass, vmin,mpsTOknots(CAS), Hp_vect.at(i), minCASLimitReached, maxCASLimitReached,maxAltLimitReached);
             }
 
-            D = calculateDrag(actualACMass, ro, TAS, 0, flightConfig, expedite);
+            D = calculateDrag(actualACMass, ro, TAS, BankAngle_actual, flightConfig, expedite);
             D_vect << D;
 
             GRAD_vect << initGrad;
@@ -1931,7 +2025,7 @@ void Dialog::run()
             Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (actualACMass*g0/TAS) + D;  // musim dopocitat tah z ROCD
             Thr_vect << Thr;
 
-            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
+            FFlow = fuelFlow(mpsTOknots(TAS), Thr, Hp_vect.at(i), activePhaseOfFlight, flightConfig, EngineType, false) / 60; // in [kg/s]
             FUELFLOW_vect << FFlow;
 
             FWeight = fuelWeight(FFlow, time);
@@ -1977,7 +2071,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 {
     QVector<double> outVect;
 
-    double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp;
+    double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp, C_pow_red;
     QString flightConfig;
     bool expedite;
     if(ui->expediteChB->isChecked())
@@ -1988,6 +2082,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
     T = temperatureDetermination(ftTOm(Hp));    // Temperature based on altitude
     p = airPressureDetermination(ftTOm(Hp));    // pressure based on altitude
     ro = airDensityDetermination(T,p);          // density based on altitude
+    C_pow_red = calculateReducedClimbPower(Hp, ACMass, EngineType);  // reduced power constant for CLIMB
 
     // prevodova vyska - crossover altitude / transition altitude
     transAlt = transitionAltitude(knotsTOmps(vCAS),vMach); // vypocet crossover alt pre definovanu CAS a M
@@ -2003,7 +2098,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             CAS = vCAS;                             // [kt]
             TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
             mach = TAStoM(knotsTOmps(TAS),T);
-            flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+            flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, CAS);
             fM = calculateShareFactor(mach, T, "CONSTANT_CAS_BELOW_TROPOPAUSE");
         }
 
@@ -2015,7 +2110,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
                 mach = vMach;
                 TAS = mpsTOknots(MtoTAS(mach,T));                   // [kt]
                 CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));   // [kt]
-                flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+                flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, CAS);
                 fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
             }
 
@@ -2024,7 +2119,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
                 // tu sa udrziava konst CAS a pocita sa mach
                 CAS = vCAS;                             // [kt]
                 TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
-                flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+                flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, CAS);
                 mach = TAStoM(knotsTOmps(TAS),T);
                 fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
             }
@@ -2039,14 +2134,22 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
             TAS = mpsTOknots(MtoTAS(mach,T));                   // [kt]
             CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS),p,ro));   // [kt]
 
-            flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);  
+            flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, CAS);
         }
 
         Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
-        Thr = calculateDescentThrust(Hp, Thr_max_climb, flightConfig);
-        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
 
-        ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM));
+        if(activePhaseOfFlight == "DESCENT")
+        {
+            Thr = calculateDescentThrust(Hp,Thr_max_climb, flightConfig);
+        }
+        else if(activePhaseOfFlight == "CLIMB")
+        {
+            Thr = Thr_max_climb;
+        }
+        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), BankAngle, flightConfig, expedite);
+
+        ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM, C_pow_red, activePhaseOfFlight));
 
         time = time_c;  // hodnota timera [s]
         dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
@@ -2054,7 +2157,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
         grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
 
-        FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, true) / 60; // in [kg/s]
+        FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, true) / 60; // in [kg/s]
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
         actualACMass = ACMass - FWeight;    // [kg]
@@ -2064,9 +2167,9 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
     {
         CAS = vCAS;                                         // [kt]
         TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
-        flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+        flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, CAS);
 
-        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), BankAngle, flightConfig, expedite);
 
         mach = TAStoM(knotsTOmps(TAS),T);
 
@@ -2091,6 +2194,16 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         }
 
         ROCD = vROCD;
+
+        if(activePhaseOfFlight == "DESCENT")
+        {
+            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+        }
+        else if(activePhaseOfFlight == "CLIMB")
+        {
+            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/(knotsTOmps(TAS)*C_pow_red)) + D;  // musim dopocitat tah z ROCD
+        }
+
         Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;
 
         time = time_c;  // hodnota timera [s]
@@ -2098,7 +2211,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         delta_Hp = (ROCD / 60) * time;  // [ft]
         grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
 
-        FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, false) / 60; // in [kg/s]
+        FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60; // in [kg/s]
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
         actualACMass = ACMass - FWeight;    // [kg]
@@ -2147,9 +2260,9 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
 
         }
 
-        flightConfig = getFlightConfiguration("DESCENT", Hp, CAS);
+        flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, CAS);
 
-        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), 0, flightConfig, expedite);
+        D = calculateDrag(ACMass, ro, knotsTOmps(TAS), BankAngle, flightConfig, expedite);
 
         time = time_c;  // hodnota timera [s]
         dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
@@ -2158,7 +2271,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         ROCD = (delta_Hp/time) * 60;   // [ft/min]
 
         Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
-        FFlow = fuelFlow(TAS, Thr, Hp, "DESCENT", flightConfig, EngineType, false) / 60;  // in [kg/s]
+        FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60;  // in [kg/s]
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
         actualACMass = ACMass - FWeight;    // [kg]
@@ -2183,6 +2296,9 @@ void Dialog::CASMACH_selected()
     ui->ROCDLineEdit->setEnabled(false);
     ui->expediteChB->setChecked(false);
     ui->expediteChB->setEnabled(true);
+
+    ui->reducedClimbPowerChB->setEnabled(true);
+    ui->reducedClimbPowerChB->setChecked(false);
 }
 
 void Dialog::ROCD_selected()
@@ -2191,6 +2307,9 @@ void Dialog::ROCD_selected()
     ui->GradientLineEdit->setEnabled(false);
     ui->expediteChB->setChecked(false);
     ui->expediteChB->setEnabled(false);
+
+    ui->reducedClimbPowerChB->setEnabled(false);
+    ui->reducedClimbPowerChB->setChecked(false);
 }
 
 void Dialog::Gradient_selected()
@@ -2215,6 +2334,7 @@ void Dialog::EmergencyDescent_selected()
 void Dialog::TimeOut()
 {
     QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, BankAngle_actual, DIST_actual, FWeight_actual, timer_const);
+
     Hp_actual += vect[13];
     ACMass_actual = vect[18];
     DIST_actual = vect[12];

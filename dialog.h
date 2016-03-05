@@ -45,7 +45,7 @@ public:
     double calculateReducedClimbPower(const double &altitude, const double &actualACMass, const QString &EngType);
     double calculateDescentThrust(const double &altitude, const double &Thr_max_climb, const QString &config);
     double calculateDrag(const double &m, const double &ro, const double &vTAS, const double &bankAngle, const QString &config, const bool &expedite);
-    QString getFlightConfiguration(const QString &phase, const double &altitude, const double &vCAS);
+    QString getFlightConfiguration(const QString &phase, const double &altitude, const double &rwyElevation, const double &vCAS);
     double getFlightTime(const double &ROCD, const double &delta_Hp);
     double getFlightDistance(const double &time, const double &vTAS, const double &BankAngle);
     double getGradient(const double &delta_Hp, const double &distance);
@@ -78,7 +78,7 @@ public:
     double r2d(const double &rad);
     double d2r(const double &deg);
 
-    double ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor);
+    double ROCDcalc(const double &T, const double &vTAS, const double &thrust, const double &drag, const double &m, const double &shareFactor, const double &C_pow_red, const QString &phase);
     void run();
     void exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH, const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance, const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM);
     QVector<double> BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &DIST, const double &FWeight_total, const double &time_c);
@@ -94,6 +94,8 @@ private:
 
     QTimer *timer;
     double timer_const;
+
+    QString activePhaseOfFlight;
 
     double Hp_actual;
     double CAS_init;
@@ -166,6 +168,7 @@ private:
     double length;
 
 private slots:
+    void typeOfFlight_changed();
     void parse_clicked();
     void CASMACH_selected();
     void ROCD_selected();
