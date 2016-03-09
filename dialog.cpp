@@ -88,6 +88,7 @@ Dialog::Dialog(QWidget *parent) :
 
     ui->DESCENT_rb->setChecked(true);
     typeOfFlight_changed();
+    optionOfFlight_changed();
 
     ui->ACMassLineEdit->setText("65300");
     ui->CASLineEdit->setText("290");
@@ -108,10 +109,16 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->DESCENT_rb, SIGNAL(clicked()), this, SLOT(typeOfFlight_changed()));
     connect(ui->CRUISE_rb, SIGNAL(clicked()), this, SLOT(typeOfFlight_changed()));
     connect(ui->parsePushButton, SIGNAL(clicked()), this, SLOT(parse_clicked()));
-    connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(CASMACH_selected()));
-    connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
-    connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(Gradient_selected()));
-    connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(EmergencyDescent_selected()));
+
+    connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
+    connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
+    connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
+    connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
+
+    //connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(CASMACH_selected()));
+    //connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
+    //connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(Gradient_selected()));
+    //connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(EmergencyDescent_selected()));
     connect(ui->startPushButton, SIGNAL(clicked()), this, SLOT(start_clicked()));
     connect(ui->stopPushButton, SIGNAL(clicked()), this, SLOT(stop_clicked()));
     connect(ui->ICAOcomboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(AircraftChanged(QString)));
@@ -164,6 +171,55 @@ void Dialog::typeOfFlight_changed()
         ui->expediteChB->hide();
         ui->reducedClimbPowerChB->setChecked(false);
         ui->reducedClimbPowerChB->hide();
+    }
+}
+
+void Dialog::optionOfFlight_changed()
+{
+    if(ui->CAS_MACH_rb->isChecked())
+    {
+        activeFlightOption = "CAS_MACH";
+
+        ui->GradientLineEdit->setEnabled(false);
+        ui->ROCDLineEdit->setEnabled(false);
+        ui->expediteChB->setChecked(false);
+        ui->expediteChB->setEnabled(true);
+
+        ui->reducedClimbPowerChB->setEnabled(true);
+        ui->reducedClimbPowerChB->setChecked(false);
+    }
+    else if(ui->ROCD_rb->isChecked())
+    {
+        activeFlightOption = "ROCD";
+
+        ui->ROCDLineEdit->setEnabled(true);
+        ui->GradientLineEdit->setEnabled(false);
+        ui->expediteChB->setChecked(false);
+        ui->expediteChB->setEnabled(false);
+
+        ui->reducedClimbPowerChB->setEnabled(false);
+        ui->reducedClimbPowerChB->setChecked(false);
+    }
+    else if(ui->Gradient_rb->isChecked())
+    {
+        activeFlightOption = "GRAD";
+
+        ui->GradientLineEdit->setEnabled(true);
+        ui->ROCDLineEdit->setEnabled(false);
+        ui->expediteChB->setChecked(false);
+        ui->expediteChB->setEnabled(false);
+    }
+    else if(ui->EmergencyDescent_rb->isChecked())
+    {
+        activeFlightOption = "EMERGENCY";
+
+        ui->GradientLineEdit->setEnabled(false);
+        ui->ROCDLineEdit->setEnabled(false);
+        ui->expediteChB->setChecked(true);
+        ui->expediteChB->setEnabled(false);
+
+        ui->CASLineEdit->setText(QString::number(V_MO));
+        ui->MachLineEdit->setText(QString::number(M_MO));
     }
 }
 
@@ -1662,7 +1718,7 @@ void Dialog::run()
     double minAlt = qMin(mTOft(Hp_trop), transAlt);
     double maxAlt = qMax(mTOft(Hp_trop), transAlt);
 
-    if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
+    if(activeFlightOption == "CAS_MACH" || activeFlightOption == "EMERGENCY")
     {
         for(int i=0; i<Hp_vect.size(); i++)
         {
@@ -1810,7 +1866,7 @@ void Dialog::run()
             ACMass_vect << actualACMass;
         }
     }
-    else if(ui->ROCD_rb->isChecked()) // Define ROCD and CAS and calculate the rest of flight parameters
+    else if(activeFlightOption == "ROCD") // Define ROCD and CAS and calculate the rest of flight parameters
     {
         for(int i=0; i<Hp_vect.size(); i++)
         {
@@ -1898,7 +1954,7 @@ void Dialog::run()
             ACMass_vect << actualACMass;
         }
     }
-    else if(ui->Gradient_rb->isChecked())
+    else if(activeFlightOption == "GRAD")
     {
         for(int i=0; i<Hp_vect.size(); i++)
         {
@@ -2067,7 +2123,7 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &DIST, const double &FWeight_total, const double &time_c)
+QVector<double> Dialog::BADAcalc(const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c)
 {
     QVector<double> outVect;
 
@@ -2090,7 +2146,9 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
     double minAlt = qMin(mTOft(Hp_trop), transAlt);    // calcualtion of smaller value of altitude between Hp_trop and TransAlt
     double maxAlt = qMax(mTOft(Hp_trop), transAlt);    // calcualtion of greater value of altitude between Hp_trop and TransAlt
 
-    if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
+
+    if(flightOption == "CAS_MACH" || flightOption == "EMERGENCY")
+    //if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
     {
         if(Hp <= minAlt)
         {
@@ -2163,7 +2221,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         actualACMass = ACMass - FWeight;    // [kg]
     }
 
-    else if(ui->ROCD_rb->isChecked()) // Define ROCD and CAS and calculate the rest of flight parameters
+    else if(flightOption == "ROCD") // Define ROCD and CAS and calculate the rest of flight parameters
     {
         CAS = vCAS;                                         // [kt]
         TAS = mpsTOknots(CAStoTAS(knotsTOmps(CAS),p,ro));   // [kt]
@@ -2217,7 +2275,7 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         actualACMass = ACMass - FWeight;    // [kg]
     }
 
-    else if(ui->Gradient_rb->isChecked())
+    else if(flightOption == "GRAD")
     {
         grad = vGrad;
 
@@ -2277,10 +2335,8 @@ QVector<double> Dialog::BADAcalc(const double &Hp, const double &vCAS, const dou
         actualACMass = ACMass - FWeight;    // [kg]
     }
 
-    dist += DIST;
-
     outVect.clear();
-    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass << FWeight_total;
+    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass;
 
     return outVect;
 }
@@ -2333,12 +2389,17 @@ void Dialog::EmergencyDescent_selected()
 
 void Dialog::TimeOut()
 {
-    QVector<double> vect = BADAcalc(Hp_actual, CAS_init, MACH_init, ROCD_init, Grad_init, ACMass_actual, BankAngle_actual, DIST_actual, FWeight_actual, timer_const);
+    double CAS_actuall = ui->CASLineEdit->text().toDouble();
+    double MACH_actuall = ui->MachLineEdit->text().toDouble();
+    double ROCD_actuall = ui->ROCDLineEdit->text().toDouble();
+    double GRAD_actuall = ui->GradientLineEdit->text().toDouble();
+    double BankAngle_actuall = ui->BankAngleLineEdit->text().toDouble();
+
+
+    QVector<double> vect = BADAcalc(activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const);
 
     Hp_actual += vect[13];
     ACMass_actual = vect[18];
-    DIST_actual = vect[12];
-    FWeight_actual += vect[16];
 
     emit send_data(vect);   // send data from 1 calculation to graph dialog window
 }
@@ -2348,8 +2409,6 @@ void Dialog::start_clicked()
     graphWindow->show();
 
     timer_const = 1;    // timer in [s]
-    DIST_actual = 0;      // distance init value [NM]
-    FWeight_actual = 0;   // total FWeight value [kg]
 
     Hp_actual = ui->Hp_0LineEdit->text().toDouble();             // [ft]
     CAS_init = ui->CASLineEdit->text().toDouble();               // [kt]

@@ -52,6 +52,9 @@ private:
     QVector<double> FWeight_vect;
     QVector<double> ACtualMass_vect;
 
+    double FWeight_init;
+    double DIST_init;
+
     QPen redPen;
     QPen bluePen;
 

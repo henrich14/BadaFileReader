@@ -304,20 +304,27 @@ void Graph::receive_data(const QVector<double> &DATA)
     fM_vect.append(DATA[9]);
     ROCD_vect.append(DATA[10]);
 
+
     if(TIME_vect.size() > 0)
     {
         TIME_vect.append(TIME_vect.at(TIME_vect.size()-1) + DATA[11]);
+        DIST_vect.append(DIST_vect.last() + DIST_init);
+        FWeight_vect.append(FWeight_vect.last() + FWeight_init);
     }
     else
     {
         TIME_vect.append(0);
+
+        DIST_vect.append(0);
+        FWeight_vect.append(0);
     }
 
-    DIST_vect.append(DATA[12]);
+    FWeight_init = DATA[16];
+    DIST_init = DATA[12];
+
     DeltaHp_vect.append(DATA[13]);
     GRAD_vect.append(DATA[14]);
     FFLow_vect.append(DATA[15]);
-    FWeight_vect.append(DATA[19]);
     ACtualMass_vect.append(DATA[17]);
 
     drawGraph();
