@@ -2097,6 +2097,89 @@ void Dialog::run()
     exportData(path, Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 }
 
+void Dialog::runTestFlightTrajectory()
+{
+    QVector<double> vect;
+    QVector<double> Hp_vect, CAS_vect, MACH_vect, TAS_vect, ROCD_vect, TIME_vect, DIST_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, ACMass_vect, Thr_vect, D_vect, fM_vect;
+    QString PhaseOfFlight = "DESCENT";
+    QString flightOption = "GRAD";
+    double Hp_init = 25000;         // [ft]
+    double CAS_init = 250;          // [kt]
+    double Mach_init = 0.78;        // [-]
+    double ROCD_init = 1500;        // [ft/min]
+    double Grad_init = -3;           // [°]
+    double ACMass_init = 65300;     // [kg]
+    double BannkAngle = 0;
+    double timer_const = 0.1;         // [s]
+
+    double Hp_actuall = Hp_init;
+    double ACMass_actuall = ACMass_init;
+    double Grad_actuall = Grad_init;
+
+
+    while(Hp_actuall > 20000)
+    {
+        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const);
+
+        Hp_vect << vect[0];
+        ACMass_vect << vect[17];
+        CAS_vect << vect[4];
+        TAS_vect << vect[5];
+        MACH_vect << vect[8];
+        ROCD_vect << vect[10];
+        FUELFLOW_vect << vect[15];
+        FUEL_vect << vect[16];
+        TIME_vect << vect[11];
+        DIST_vect << vect[12];
+        GRAD_vect << vect[14];
+        Thr_vect << vect[6];
+        D_vect << vect[7];
+        fM_vect << vect[9];
+
+        Hp_actuall += vect[13];
+        ACMass_actuall = vect[18];
+    }
+
+    while(Grad_actuall < 0)
+    {
+        qDebug() << Grad_actuall;
+        Grad_actuall += 0.01;
+
+        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const);
+
+        Hp_vect << vect[0];
+        ACMass_vect << vect[17];
+        CAS_vect << vect[4];
+        TAS_vect << vect[5];
+        MACH_vect << vect[8];
+        ROCD_vect << vect[10];
+        FUELFLOW_vect << vect[15];
+        FUEL_vect << vect[16];
+        TIME_vect << vect[11];
+        DIST_vect << vect[12];
+        GRAD_vect << vect[14];
+        Thr_vect << vect[6];
+        D_vect << vect[7];
+        fM_vect << vect[9];
+
+        Hp_actuall += vect[13];
+        ACMass_actuall = vect[18];
+
+    }
+
+
+
+
+
+
+
+
+    QDir dir;
+    exportData(dir.currentPath() + "/test.txt", Hp_vect , ACMass_vect, CAS_vect, TAS_vect, MACH_vect, ROCD_vect, GRAD_vect, FUELFLOW_vect, FUEL_vect, TIME_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
+
+    //outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass;
+}
+
 void Dialog::exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH,
                         const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance,
                         const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM)
@@ -2108,6 +2191,7 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     }
 
     QTextStream stream(&file);
+    stream.setRealNumberPrecision(10);
 
     stream << "Hp[ft]\tACMass[kg]\tCAS[kt]\tTAS[kt]\tM[-]\tROCD[ft/min]\tGrad[deg]\tFuelFlow[kg/s]\tFuel[kg]\tTime[s]\tDistance[NM]"
               "\tThr[N]\tD[N]\tfM[-]" << "\n";
@@ -2123,7 +2207,7 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c)
+QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c)
 {
     QVector<double> outVect;
 
@@ -2344,6 +2428,8 @@ QVector<double> Dialog::BADAcalc(const QString &flightOption, const double &Hp, 
 void Dialog::parse_clicked()
 {
     run();
+
+    runTestFlightTrajectory();
 }
 
 void Dialog::CASMACH_selected()
@@ -2396,7 +2482,7 @@ void Dialog::TimeOut()
     double BankAngle_actuall = ui->BankAngleLineEdit->text().toDouble();
 
 
-    QVector<double> vect = BADAcalc(activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const);
+    QVector<double> vect = BADAcalc(activePhaseOfFlight, activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const);
 
     Hp_actual += vect[13];
     ACMass_actual = vect[18];
