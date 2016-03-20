@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'dialog.h'
 **
-** Created: Thu 10. Mar 18:56:08 2016
+** Created: Sun 20. Mar 19:56:47 2016
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,7 +23,7 @@ static const uint qt_meta_data_Dialog[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      13,   14, // methods
+      14,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -38,14 +38,15 @@ static const uint qt_meta_data_Dialog[] = {
       55,    7,    7,    7, 0x08,
       78,    7,    7,    7, 0x08,
      103,    7,    7,    7, 0x08,
-     119,    7,    7,    7, 0x08,
-     138,    7,    7,    7, 0x08,
-     154,    7,    7,    7, 0x08,
-     174,    7,    7,    7, 0x08,
-     202,    7,    7,    7, 0x08,
-     212,    7,    7,    7, 0x08,
-     228,    7,    7,    7, 0x08,
-     256,  243,    7,    7, 0x08,
+     127,    7,    7,    7, 0x08,
+     143,    7,    7,    7, 0x08,
+     162,    7,    7,    7, 0x08,
+     178,    7,    7,    7, 0x08,
+     198,    7,    7,    7, 0x08,
+     226,    7,    7,    7, 0x08,
+     236,    7,    7,    7, 0x08,
+     252,    7,    7,    7, 0x08,
+     280,  267,    7,    7, 0x08,
 
        0        // eod
 };
@@ -53,7 +54,8 @@ static const uint qt_meta_data_Dialog[] = {
 static const char qt_meta_stringdata_Dialog[] = {
     "Dialog\0\0DATA\0send_data(QVector<double>)\0"
     "start_signal()\0typeOfFlight_changed()\0"
-    "optionOfFlight_changed()\0parse_clicked()\0"
+    "optionOfFlight_changed()\0"
+    "reducedClimbPower_set()\0parse_clicked()\0"
     "CASMACH_selected()\0ROCD_selected()\0"
     "Gradient_selected()\0EmergencyDescent_selected()\0"
     "TimeOut()\0start_clicked()\0stop_clicked()\0"
@@ -70,15 +72,16 @@ void Dialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void
         case 1: _t->start_signal(); break;
         case 2: _t->typeOfFlight_changed(); break;
         case 3: _t->optionOfFlight_changed(); break;
-        case 4: _t->parse_clicked(); break;
-        case 5: _t->CASMACH_selected(); break;
-        case 6: _t->ROCD_selected(); break;
-        case 7: _t->Gradient_selected(); break;
-        case 8: _t->EmergencyDescent_selected(); break;
-        case 9: _t->TimeOut(); break;
-        case 10: _t->start_clicked(); break;
-        case 11: _t->stop_clicked(); break;
-        case 12: _t->AircraftChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 4: _t->reducedClimbPower_set(); break;
+        case 5: _t->parse_clicked(); break;
+        case 6: _t->CASMACH_selected(); break;
+        case 7: _t->ROCD_selected(); break;
+        case 8: _t->Gradient_selected(); break;
+        case 9: _t->EmergencyDescent_selected(); break;
+        case 10: _t->TimeOut(); break;
+        case 11: _t->start_clicked(); break;
+        case 12: _t->stop_clicked(); break;
+        case 13: _t->AircraftChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
         default: ;
         }
     }
@@ -116,9 +119,9 @@ int Dialog::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 13)
+        if (_id < 14)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 14;
     }
     return _id;
 }

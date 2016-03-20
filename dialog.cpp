@@ -102,6 +102,7 @@ Dialog::Dialog(QWidget *parent) :
 
     ui->ROCDLineEdit->setEnabled(false);
     ui->GradientLineEdit->setEnabled(false);
+    reducedClimbPower = false;
 
     timer = new QTimer(this);
 
@@ -115,10 +116,8 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
     connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
 
-    //connect(ui->CAS_MACH_rb, SIGNAL(clicked()), this, SLOT(CASMACH_selected()));
-    //connect(ui->ROCD_rb, SIGNAL(clicked()), this, SLOT(ROCD_selected()));
-    //connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(Gradient_selected()));
-    //connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(EmergencyDescent_selected()));
+    connect(ui->reducedClimbPowerChB, SIGNAL(clicked()), this, SLOT(reducedClimbPower_set()));
+
     connect(ui->startPushButton, SIGNAL(clicked()), this, SLOT(start_clicked()));
     connect(ui->stopPushButton, SIGNAL(clicked()), this, SLOT(stop_clicked()));
     connect(ui->ICAOcomboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(AircraftChanged(QString)));
@@ -220,6 +219,18 @@ void Dialog::optionOfFlight_changed()
 
         ui->CASLineEdit->setText(QString::number(V_MO));
         ui->MachLineEdit->setText(QString::number(M_MO));
+    }
+}
+
+void Dialog::reducedClimbPower_set()
+{
+    if(ui->reducedClimbPowerChB->isChecked())
+    {
+        reducedClimbPower = true;
+    }
+    else if(ui->reducedClimbPowerChB->isChecked())
+    {
+        reducedClimbPower = false;
     }
 }
 
@@ -1210,6 +1221,19 @@ double Dialog::turnRadius(const double &vTAS, const double &rateOfTurn)
     return R;
 }
 
+double Dialog::getDeltaTAS(const double &vTAS, const double &delta_Hp, const double &fM)
+{
+    // calculate the change in TAS speed for defined change in altitude and defined share factor
+    // input TAS [kt]; delta_Hp [ft]; fM [-]
+    // output delta_TAS [kt]
+
+    double delta_TAS = 0.0;
+
+    delta_TAS = mpsTOknots((1/fM - 1) * (g0/knotsTOmps(vTAS)) * ftTOm(delta_Hp));
+
+    return delta_TAS;
+}
+
 void Dialog::flightEnvelope_operational()
 {
     double actualACMass = ui->ACMassLineEdit->text().toDouble();
@@ -1649,7 +1673,7 @@ double Dialog::ROCDcalc(const double &T, const double &vTAS, const double &thrus
     }
     else if(phase == "CLIMB")
     {
-        if(ui->reducedClimbPowerChB->isChecked())
+        if(reducedClimbPower == true)
         {
             ROCD = ((T-deltaT)/T) * (((thrust - drag)*vTAS*C_pow_red)/(m*g0)) * shareFactor;
         }
@@ -2142,7 +2166,6 @@ void Dialog::runTestFlightTrajectory()
 
     while(Grad_actuall < 0)
     {
-        qDebug() << Grad_actuall;
         Grad_actuall += 0.01;
 
         vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const);
@@ -2232,7 +2255,6 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
 
 
     if(flightOption == "CAS_MACH" || flightOption == "EMERGENCY")
-    //if(ui->CAS_MACH_rb->isChecked() || ui->EmergencyDescent_rb->isChecked())
     {
         if(Hp <= minAlt)
         {
@@ -2425,11 +2447,84 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
     return outVect;
 }
 
+QVector<double> Dialog::speedChangecalc(const QString &activePhaseOfFlight, const double &ACMass, const double &time, const double &TAS, const double &fM, const double &Hp, const QString &EngineType, const double BankAngle)
+{
+    QVector<double> outVect;
+
+    double T, p, ro, CAS_act, Thr_max_climb, Thr, D, ROCD, FFlow, FWeight, delta_Hp, C_pow_red, ACMass_act, Hp_act, TAS_act, delta_TAS;
+    QString flightConfig;
+
+
+    T = temperatureDetermination(ftTOm(Hp));    // Temperature based on altitude
+    p = airPressureDetermination(ftTOm(Hp));    // pressure based on altitude
+    ro = airDensityDetermination(T,p);              // density based on altitude
+    C_pow_red = calculateReducedClimbPower(Hp, ACMass, EngineType);  // reduced power constant for CLIMB
+
+    CAS_act = TAStoCAS(knotsTOmps(TAS), p, ro);
+
+    flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp, rwyElev, mpsTOknots(CAS_act));
+
+    Thr_max_climb = calculateMaxClimbThrust(Hp, TAS, EngineType);
+
+    if(activePhaseOfFlight == "DESCENT")
+    {
+        Thr = calculateDescentThrust(Hp,Thr_max_climb, flightConfig);
+    }
+    else if(activePhaseOfFlight == "CLIMB")
+    {
+        Thr = Thr_max_climb;
+    }
+
+    D = calculateDrag(ACMass, ro, knotsTOmps(TAS), BankAngle, flightConfig, false);
+
+    ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM, C_pow_red, activePhaseOfFlight));
+    qDebug() << "ROCD [ft/min]" << ROCD << "TAS" << TAS << "Thr" << Thr << "D" << D << "ACMass" << ACMass << "fM" << fM << "C_pow_red" << C_pow_red << "Phase" << activePhaseOfFlight;
+
+    delta_Hp = (ROCD / 60) * time;  // [ft]
+
+    FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60; // in [kg/s]
+
+    FWeight = fuelWeight(FFlow, time);   // [kg]
+    ACMass_act = ACMass - FWeight;           // [kg]
+
+    Hp_act = Hp + delta_Hp;
+
+    delta_TAS = getDeltaTAS(TAS, delta_Hp, fM); // [kt]
+    TAS_act = TAS + delta_TAS;
+
+
+    outVect << Hp_act << ACMass_act << TAS_act << ROCD;
+
+    return outVect;
+}
+
 void Dialog::parse_clicked()
 {
     run();
 
     runTestFlightTrajectory();
+
+
+    QVector<double> outVect;
+    double ACMass_act = 65300;
+    double time = 1;
+    double TAS_act = 250; // [kt]
+    double fM = 0.3;
+    double Hp_act = 10000; // [ft]
+
+    for(int i=0; i<50; i++)
+    {
+        outVect = speedChangecalc(activePhaseOfFlight, ACMass_act, time, TAS_act, fM, Hp_act, EngineType, 0);
+
+        Hp_act = outVect[0];
+        ACMass_act = outVect[1];
+        TAS_act = outVect[2];
+        double ROCD_act = outVect[3];
+
+        qDebug() << Hp_act << ACMass_act << TAS_act << ROCD_act;
+    }
+
+
 }
 
 void Dialog::CASMACH_selected()

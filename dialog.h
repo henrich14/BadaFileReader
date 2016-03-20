@@ -57,6 +57,7 @@ public:
     double rateTurn(const double &BankAngle, const double &vTAS);
     double turnAngle(const double &rateOfTurn, const double &time);
     double turnRadius(const double &vTAS, const double &rateOfTurn);
+    double getDeltaTAS(const double &vTAS, const double &delta_Hp, const double &fM);
 
     void flightEnvelope_operational();
     void flightEnvelope_certified();
@@ -83,6 +84,8 @@ public:
     void runTestFlightTrajectory();
     void exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH, const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance, const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM);
     QVector<double> BADAcalc(const QString activePhaseOfFlight, const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c);
+    QVector<double> speedChangecalc(const QString &activePhaseOfFlight, const double &ACMass, const double &time, const double &TAS, const double &fM, const double &Hp,
+                                    const QString &EngineType, const double BankAngle);
 
 signals:
     void send_data(const QVector<double> &DATA);
@@ -98,6 +101,7 @@ private:
 
     QString activePhaseOfFlight;
     QString activeFlightOption;
+    bool reducedClimbPower;
 
     double Hp_actual;
     double CAS_init;
@@ -170,6 +174,7 @@ private:
 private slots:
     void typeOfFlight_changed();
     void optionOfFlight_changed();
+    void reducedClimbPower_set();
     void parse_clicked();
     void CASMACH_selected();
     void ROCD_selected();
