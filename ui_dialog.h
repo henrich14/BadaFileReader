@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'dialog.ui'
 **
-** Created: Sat 5. Mar 14:41:49 2016
+** Created: Mon 21. Mar 21:35:58 2016
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -32,7 +32,7 @@ QT_BEGIN_NAMESPACE
 class Ui_Dialog
 {
 public:
-    QVBoxLayout *verticalLayout_5;
+    QVBoxLayout *verticalLayout_8;
     QHBoxLayout *horizontalLayout_2;
     QLabel *label;
     QComboBox *ICAOcomboBox;
@@ -97,30 +97,33 @@ public:
     QHBoxLayout *horizontalLayout_26;
     QCheckBox *expediteChB;
     QCheckBox *reducedClimbPowerChB;
-    QHBoxLayout *horizontalLayout_6;
-    QLabel *label_12;
-    QLineEdit *ACMassLineEdit;
-    QLabel *label_13;
+    QCheckBox *acc_decChB;
     QHBoxLayout *horizontalLayout_3;
+    QVBoxLayout *verticalLayout_5;
+    QLabel *label_40;
+    QLabel *label_12;
     QLabel *label_2;
-    QLineEdit *CASLineEdit;
-    QLabel *label_7;
-    QHBoxLayout *horizontalLayout_7;
     QLabel *label_14;
-    QLineEdit *ROCDLineEdit;
-    QLabel *label_15;
-    QHBoxLayout *horizontalLayout_8;
     QLabel *label_16;
-    QLineEdit *GradientLineEdit;
-    QLabel *label_17;
-    QHBoxLayout *horizontalLayout_4;
     QLabel *label_3;
-    QLineEdit *MachLineEdit;
-    QLabel *label_8;
-    QHBoxLayout *horizontalLayout_23;
     QLabel *label_38;
+    QVBoxLayout *verticalLayout_6;
+    QLineEdit *fMLineEdit;
+    QLineEdit *ACMassLineEdit;
+    QLineEdit *CASLineEdit;
+    QLineEdit *ROCDLineEdit;
+    QLineEdit *GradientLineEdit;
+    QLineEdit *MachLineEdit;
     QLineEdit *BankAngleLineEdit;
+    QVBoxLayout *verticalLayout_7;
+    QLabel *label_41;
+    QLabel *label_13;
+    QLabel *label_7;
+    QLabel *label_15;
+    QLabel *label_17;
+    QLabel *label_8;
     QLabel *label_39;
+    QSpacerItem *horizontalSpacer_5;
     QHBoxLayout *horizontalLayout_5;
     QLabel *label_4;
     QLineEdit *Hp_0LineEdit;
@@ -145,11 +148,11 @@ public:
     {
         if (Dialog->objectName().isEmpty())
             Dialog->setObjectName(QString::fromUtf8("Dialog"));
-        Dialog->resize(550, 573);
-        verticalLayout_5 = new QVBoxLayout(Dialog);
-        verticalLayout_5->setSpacing(6);
-        verticalLayout_5->setContentsMargins(11, 11, 11, 11);
-        verticalLayout_5->setObjectName(QString::fromUtf8("verticalLayout_5"));
+        Dialog->resize(550, 591);
+        verticalLayout_8 = new QVBoxLayout(Dialog);
+        verticalLayout_8->setSpacing(6);
+        verticalLayout_8->setContentsMargins(11, 11, 11, 11);
+        verticalLayout_8->setObjectName(QString::fromUtf8("verticalLayout_8"));
         horizontalLayout_2 = new QHBoxLayout();
         horizontalLayout_2->setSpacing(6);
         horizontalLayout_2->setObjectName(QString::fromUtf8("horizontalLayout_2"));
@@ -168,7 +171,7 @@ public:
         horizontalLayout_2->addItem(horizontalSpacer_3);
 
 
-        verticalLayout_5->addLayout(horizontalLayout_2);
+        verticalLayout_8->addLayout(horizontalLayout_2);
 
         aircraftParam_gb = new QGroupBox(Dialog);
         aircraftParam_gb->setObjectName(QString::fromUtf8("aircraftParam_gb"));
@@ -411,7 +414,7 @@ public:
         horizontalLayout_21->addLayout(verticalLayout_4);
 
 
-        verticalLayout_5->addWidget(aircraftParam_gb);
+        verticalLayout_8->addWidget(aircraftParam_gb);
 
         phaseOfFlight_gb = new QGroupBox(Dialog);
         phaseOfFlight_gb->setObjectName(QString::fromUtf8("phaseOfFlight_gb"));
@@ -436,7 +439,7 @@ public:
         horizontalLayout_25->addWidget(DESCENT_rb);
 
 
-        verticalLayout_5->addWidget(phaseOfFlight_gb);
+        verticalLayout_8->addWidget(phaseOfFlight_gb);
 
         typeOfFlight_gb = new QGroupBox(Dialog);
         typeOfFlight_gb->setObjectName(QString::fromUtf8("typeOfFlight_gb"));
@@ -466,7 +469,7 @@ public:
         horizontalLayout_9->addWidget(EmergencyDescent_rb);
 
 
-        verticalLayout_5->addWidget(typeOfFlight_gb);
+        verticalLayout_8->addWidget(typeOfFlight_gb);
 
         horizontalLayout_26 = new QHBoxLayout();
         horizontalLayout_26->setSpacing(6);
@@ -481,134 +484,146 @@ public:
 
         horizontalLayout_26->addWidget(reducedClimbPowerChB);
 
+        acc_decChB = new QCheckBox(Dialog);
+        acc_decChB->setObjectName(QString::fromUtf8("acc_decChB"));
 
-        verticalLayout_5->addLayout(horizontalLayout_26);
-
-        horizontalLayout_6 = new QHBoxLayout();
-        horizontalLayout_6->setSpacing(6);
-        horizontalLayout_6->setObjectName(QString::fromUtf8("horizontalLayout_6"));
-        label_12 = new QLabel(Dialog);
-        label_12->setObjectName(QString::fromUtf8("label_12"));
-
-        horizontalLayout_6->addWidget(label_12);
-
-        ACMassLineEdit = new QLineEdit(Dialog);
-        ACMassLineEdit->setObjectName(QString::fromUtf8("ACMassLineEdit"));
-
-        horizontalLayout_6->addWidget(ACMassLineEdit);
-
-        label_13 = new QLabel(Dialog);
-        label_13->setObjectName(QString::fromUtf8("label_13"));
-
-        horizontalLayout_6->addWidget(label_13);
+        horizontalLayout_26->addWidget(acc_decChB);
 
 
-        verticalLayout_5->addLayout(horizontalLayout_6);
+        verticalLayout_8->addLayout(horizontalLayout_26);
 
         horizontalLayout_3 = new QHBoxLayout();
         horizontalLayout_3->setSpacing(6);
         horizontalLayout_3->setObjectName(QString::fromUtf8("horizontalLayout_3"));
+        verticalLayout_5 = new QVBoxLayout();
+        verticalLayout_5->setSpacing(6);
+        verticalLayout_5->setObjectName(QString::fromUtf8("verticalLayout_5"));
+        label_40 = new QLabel(Dialog);
+        label_40->setObjectName(QString::fromUtf8("label_40"));
+
+        verticalLayout_5->addWidget(label_40);
+
+        label_12 = new QLabel(Dialog);
+        label_12->setObjectName(QString::fromUtf8("label_12"));
+
+        verticalLayout_5->addWidget(label_12);
+
         label_2 = new QLabel(Dialog);
         label_2->setObjectName(QString::fromUtf8("label_2"));
 
-        horizontalLayout_3->addWidget(label_2);
+        verticalLayout_5->addWidget(label_2);
+
+        label_14 = new QLabel(Dialog);
+        label_14->setObjectName(QString::fromUtf8("label_14"));
+
+        verticalLayout_5->addWidget(label_14);
+
+        label_16 = new QLabel(Dialog);
+        label_16->setObjectName(QString::fromUtf8("label_16"));
+
+        verticalLayout_5->addWidget(label_16);
+
+        label_3 = new QLabel(Dialog);
+        label_3->setObjectName(QString::fromUtf8("label_3"));
+
+        verticalLayout_5->addWidget(label_3);
+
+        label_38 = new QLabel(Dialog);
+        label_38->setObjectName(QString::fromUtf8("label_38"));
+
+        verticalLayout_5->addWidget(label_38);
+
+
+        horizontalLayout_3->addLayout(verticalLayout_5);
+
+        verticalLayout_6 = new QVBoxLayout();
+        verticalLayout_6->setSpacing(6);
+        verticalLayout_6->setObjectName(QString::fromUtf8("verticalLayout_6"));
+        fMLineEdit = new QLineEdit(Dialog);
+        fMLineEdit->setObjectName(QString::fromUtf8("fMLineEdit"));
+
+        verticalLayout_6->addWidget(fMLineEdit);
+
+        ACMassLineEdit = new QLineEdit(Dialog);
+        ACMassLineEdit->setObjectName(QString::fromUtf8("ACMassLineEdit"));
+
+        verticalLayout_6->addWidget(ACMassLineEdit);
 
         CASLineEdit = new QLineEdit(Dialog);
         CASLineEdit->setObjectName(QString::fromUtf8("CASLineEdit"));
 
-        horizontalLayout_3->addWidget(CASLineEdit);
-
-        label_7 = new QLabel(Dialog);
-        label_7->setObjectName(QString::fromUtf8("label_7"));
-
-        horizontalLayout_3->addWidget(label_7);
-
-
-        verticalLayout_5->addLayout(horizontalLayout_3);
-
-        horizontalLayout_7 = new QHBoxLayout();
-        horizontalLayout_7->setSpacing(6);
-        horizontalLayout_7->setObjectName(QString::fromUtf8("horizontalLayout_7"));
-        label_14 = new QLabel(Dialog);
-        label_14->setObjectName(QString::fromUtf8("label_14"));
-
-        horizontalLayout_7->addWidget(label_14);
+        verticalLayout_6->addWidget(CASLineEdit);
 
         ROCDLineEdit = new QLineEdit(Dialog);
         ROCDLineEdit->setObjectName(QString::fromUtf8("ROCDLineEdit"));
 
-        horizontalLayout_7->addWidget(ROCDLineEdit);
-
-        label_15 = new QLabel(Dialog);
-        label_15->setObjectName(QString::fromUtf8("label_15"));
-
-        horizontalLayout_7->addWidget(label_15);
-
-
-        verticalLayout_5->addLayout(horizontalLayout_7);
-
-        horizontalLayout_8 = new QHBoxLayout();
-        horizontalLayout_8->setSpacing(6);
-        horizontalLayout_8->setObjectName(QString::fromUtf8("horizontalLayout_8"));
-        label_16 = new QLabel(Dialog);
-        label_16->setObjectName(QString::fromUtf8("label_16"));
-
-        horizontalLayout_8->addWidget(label_16);
+        verticalLayout_6->addWidget(ROCDLineEdit);
 
         GradientLineEdit = new QLineEdit(Dialog);
         GradientLineEdit->setObjectName(QString::fromUtf8("GradientLineEdit"));
 
-        horizontalLayout_8->addWidget(GradientLineEdit);
-
-        label_17 = new QLabel(Dialog);
-        label_17->setObjectName(QString::fromUtf8("label_17"));
-
-        horizontalLayout_8->addWidget(label_17);
-
-
-        verticalLayout_5->addLayout(horizontalLayout_8);
-
-        horizontalLayout_4 = new QHBoxLayout();
-        horizontalLayout_4->setSpacing(6);
-        horizontalLayout_4->setObjectName(QString::fromUtf8("horizontalLayout_4"));
-        label_3 = new QLabel(Dialog);
-        label_3->setObjectName(QString::fromUtf8("label_3"));
-
-        horizontalLayout_4->addWidget(label_3);
+        verticalLayout_6->addWidget(GradientLineEdit);
 
         MachLineEdit = new QLineEdit(Dialog);
         MachLineEdit->setObjectName(QString::fromUtf8("MachLineEdit"));
 
-        horizontalLayout_4->addWidget(MachLineEdit);
-
-        label_8 = new QLabel(Dialog);
-        label_8->setObjectName(QString::fromUtf8("label_8"));
-
-        horizontalLayout_4->addWidget(label_8);
-
-
-        verticalLayout_5->addLayout(horizontalLayout_4);
-
-        horizontalLayout_23 = new QHBoxLayout();
-        horizontalLayout_23->setSpacing(6);
-        horizontalLayout_23->setObjectName(QString::fromUtf8("horizontalLayout_23"));
-        label_38 = new QLabel(Dialog);
-        label_38->setObjectName(QString::fromUtf8("label_38"));
-
-        horizontalLayout_23->addWidget(label_38);
+        verticalLayout_6->addWidget(MachLineEdit);
 
         BankAngleLineEdit = new QLineEdit(Dialog);
         BankAngleLineEdit->setObjectName(QString::fromUtf8("BankAngleLineEdit"));
 
-        horizontalLayout_23->addWidget(BankAngleLineEdit);
+        verticalLayout_6->addWidget(BankAngleLineEdit);
+
+
+        horizontalLayout_3->addLayout(verticalLayout_6);
+
+        verticalLayout_7 = new QVBoxLayout();
+        verticalLayout_7->setSpacing(6);
+        verticalLayout_7->setObjectName(QString::fromUtf8("verticalLayout_7"));
+        label_41 = new QLabel(Dialog);
+        label_41->setObjectName(QString::fromUtf8("label_41"));
+
+        verticalLayout_7->addWidget(label_41);
+
+        label_13 = new QLabel(Dialog);
+        label_13->setObjectName(QString::fromUtf8("label_13"));
+
+        verticalLayout_7->addWidget(label_13);
+
+        label_7 = new QLabel(Dialog);
+        label_7->setObjectName(QString::fromUtf8("label_7"));
+
+        verticalLayout_7->addWidget(label_7);
+
+        label_15 = new QLabel(Dialog);
+        label_15->setObjectName(QString::fromUtf8("label_15"));
+
+        verticalLayout_7->addWidget(label_15);
+
+        label_17 = new QLabel(Dialog);
+        label_17->setObjectName(QString::fromUtf8("label_17"));
+
+        verticalLayout_7->addWidget(label_17);
+
+        label_8 = new QLabel(Dialog);
+        label_8->setObjectName(QString::fromUtf8("label_8"));
+
+        verticalLayout_7->addWidget(label_8);
 
         label_39 = new QLabel(Dialog);
         label_39->setObjectName(QString::fromUtf8("label_39"));
 
-        horizontalLayout_23->addWidget(label_39);
+        verticalLayout_7->addWidget(label_39);
 
 
-        verticalLayout_5->addLayout(horizontalLayout_23);
+        horizontalLayout_3->addLayout(verticalLayout_7);
+
+        horizontalSpacer_5 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        horizontalLayout_3->addItem(horizontalSpacer_5);
+
+
+        verticalLayout_8->addLayout(horizontalLayout_3);
 
         horizontalLayout_5 = new QHBoxLayout();
         horizontalLayout_5->setSpacing(6);
@@ -659,7 +674,7 @@ public:
         horizontalLayout_5->addWidget(label_11);
 
 
-        verticalLayout_5->addLayout(horizontalLayout_5);
+        verticalLayout_8->addLayout(horizontalLayout_5);
 
         horizontalLayout = new QHBoxLayout();
         horizontalLayout->setSpacing(6);
@@ -674,7 +689,7 @@ public:
         horizontalLayout->addWidget(parsePushButton);
 
 
-        verticalLayout_5->addLayout(horizontalLayout);
+        verticalLayout_8->addLayout(horizontalLayout);
 
         horizontalLayout_10 = new QHBoxLayout();
         horizontalLayout_10->setSpacing(6);
@@ -689,7 +704,7 @@ public:
         horizontalLayout_10->addWidget(startPushButton);
 
 
-        verticalLayout_5->addLayout(horizontalLayout_10);
+        verticalLayout_8->addLayout(horizontalLayout_10);
 
         horizontalLayout_22 = new QHBoxLayout();
         horizontalLayout_22->setSpacing(6);
@@ -704,7 +719,7 @@ public:
         horizontalLayout_22->addWidget(stopPushButton);
 
 
-        verticalLayout_5->addLayout(horizontalLayout_22);
+        verticalLayout_8->addLayout(horizontalLayout_22);
 
 
         retranslateUi(Dialog);
@@ -758,17 +773,20 @@ public:
         EmergencyDescent_rb->setText(QApplication::translate("Dialog", "Emergency descent", 0, QApplication::UnicodeUTF8));
         expediteChB->setText(QApplication::translate("Dialog", "expedite descent", 0, QApplication::UnicodeUTF8));
         reducedClimbPowerChB->setText(QApplication::translate("Dialog", "reduced climb power", 0, QApplication::UnicodeUTF8));
+        acc_decChB->setText(QApplication::translate("Dialog", "accelerate / decelerate", 0, QApplication::UnicodeUTF8));
+        label_40->setText(QApplication::translate("Dialog", "fM", 0, QApplication::UnicodeUTF8));
         label_12->setText(QApplication::translate("Dialog", "ACMass", 0, QApplication::UnicodeUTF8));
-        label_13->setText(QApplication::translate("Dialog", "[kg]", 0, QApplication::UnicodeUTF8));
         label_2->setText(QApplication::translate("Dialog", "CAS", 0, QApplication::UnicodeUTF8));
-        label_7->setText(QApplication::translate("Dialog", "[kt]", 0, QApplication::UnicodeUTF8));
         label_14->setText(QApplication::translate("Dialog", "ROCD", 0, QApplication::UnicodeUTF8));
-        label_15->setText(QApplication::translate("Dialog", "[ft/min]", 0, QApplication::UnicodeUTF8));
         label_16->setText(QApplication::translate("Dialog", "Grad", 0, QApplication::UnicodeUTF8));
-        label_17->setText(QApplication::translate("Dialog", "[\302\260]", 0, QApplication::UnicodeUTF8));
         label_3->setText(QApplication::translate("Dialog", "MACH", 0, QApplication::UnicodeUTF8));
-        label_8->setText(QApplication::translate("Dialog", "[-]", 0, QApplication::UnicodeUTF8));
         label_38->setText(QApplication::translate("Dialog", "BANK angle", 0, QApplication::UnicodeUTF8));
+        label_41->setText(QApplication::translate("Dialog", "[-]", 0, QApplication::UnicodeUTF8));
+        label_13->setText(QApplication::translate("Dialog", "[kg]", 0, QApplication::UnicodeUTF8));
+        label_7->setText(QApplication::translate("Dialog", "[kt]", 0, QApplication::UnicodeUTF8));
+        label_15->setText(QApplication::translate("Dialog", "[ft/min]", 0, QApplication::UnicodeUTF8));
+        label_17->setText(QApplication::translate("Dialog", "[\302\260]", 0, QApplication::UnicodeUTF8));
+        label_8->setText(QApplication::translate("Dialog", "[-]", 0, QApplication::UnicodeUTF8));
         label_39->setText(QApplication::translate("Dialog", "[\302\260]", 0, QApplication::UnicodeUTF8));
         label_4->setText(QApplication::translate("Dialog", "Hp_init", 0, QApplication::UnicodeUTF8));
         label_9->setText(QApplication::translate("Dialog", "[ft]", 0, QApplication::UnicodeUTF8));

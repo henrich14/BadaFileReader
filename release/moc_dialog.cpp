@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'dialog.h'
 **
-** Created: Sun 20. Mar 19:56:47 2016
+** Created: Mon 21. Mar 21:36:06 2016
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,7 +23,7 @@ static const uint qt_meta_data_Dialog[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      14,   14, // methods
+      15,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -39,14 +39,15 @@ static const uint qt_meta_data_Dialog[] = {
       78,    7,    7,    7, 0x08,
      103,    7,    7,    7, 0x08,
      127,    7,    7,    7, 0x08,
-     143,    7,    7,    7, 0x08,
+     146,    7,    7,    7, 0x08,
      162,    7,    7,    7, 0x08,
-     178,    7,    7,    7, 0x08,
-     198,    7,    7,    7, 0x08,
-     226,    7,    7,    7, 0x08,
-     236,    7,    7,    7, 0x08,
-     252,    7,    7,    7, 0x08,
-     280,  267,    7,    7, 0x08,
+     181,    7,    7,    7, 0x08,
+     197,    7,    7,    7, 0x08,
+     217,    7,    7,    7, 0x08,
+     245,    7,    7,    7, 0x08,
+     255,    7,    7,    7, 0x08,
+     271,    7,    7,    7, 0x08,
+     299,  286,    7,    7, 0x08,
 
        0        // eod
 };
@@ -55,10 +56,11 @@ static const char qt_meta_stringdata_Dialog[] = {
     "Dialog\0\0DATA\0send_data(QVector<double>)\0"
     "start_signal()\0typeOfFlight_changed()\0"
     "optionOfFlight_changed()\0"
-    "reducedClimbPower_set()\0parse_clicked()\0"
-    "CASMACH_selected()\0ROCD_selected()\0"
-    "Gradient_selected()\0EmergencyDescent_selected()\0"
-    "TimeOut()\0start_clicked()\0stop_clicked()\0"
+    "reducedClimbPower_set()\0speedChange_slot()\0"
+    "parse_clicked()\0CASMACH_selected()\0"
+    "ROCD_selected()\0Gradient_selected()\0"
+    "EmergencyDescent_selected()\0TimeOut()\0"
+    "start_clicked()\0stop_clicked()\0"
     "ICAOFileCode\0AircraftChanged(QString)\0"
 };
 
@@ -73,15 +75,16 @@ void Dialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void
         case 2: _t->typeOfFlight_changed(); break;
         case 3: _t->optionOfFlight_changed(); break;
         case 4: _t->reducedClimbPower_set(); break;
-        case 5: _t->parse_clicked(); break;
-        case 6: _t->CASMACH_selected(); break;
-        case 7: _t->ROCD_selected(); break;
-        case 8: _t->Gradient_selected(); break;
-        case 9: _t->EmergencyDescent_selected(); break;
-        case 10: _t->TimeOut(); break;
-        case 11: _t->start_clicked(); break;
-        case 12: _t->stop_clicked(); break;
-        case 13: _t->AircraftChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 5: _t->speedChange_slot(); break;
+        case 6: _t->parse_clicked(); break;
+        case 7: _t->CASMACH_selected(); break;
+        case 8: _t->ROCD_selected(); break;
+        case 9: _t->Gradient_selected(); break;
+        case 10: _t->EmergencyDescent_selected(); break;
+        case 11: _t->TimeOut(); break;
+        case 12: _t->start_clicked(); break;
+        case 13: _t->stop_clicked(); break;
+        case 14: _t->AircraftChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
         default: ;
         }
     }
@@ -119,9 +122,9 @@ int Dialog::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 14)
+        if (_id < 15)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 15;
     }
     return _id;
 }

@@ -87,9 +87,12 @@ Dialog::Dialog(QWidget *parent) :
     readSynomymFile();
 
     ui->DESCENT_rb->setChecked(true);
+    ui->acc_decChB->setChecked(false);
+    speedChange = false;
     typeOfFlight_changed();
     optionOfFlight_changed();
 
+    ui->fMLineEdit->setText("0.6");
     ui->ACMassLineEdit->setText("65300");
     ui->CASLineEdit->setText("290");
     ui->ROCDLineEdit->setText("-1500");
@@ -116,6 +119,8 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->Gradient_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
     connect(ui->EmergencyDescent_rb, SIGNAL(clicked()), this, SLOT(optionOfFlight_changed()));
 
+    connect(ui->acc_decChB, SIGNAL(clicked()), this, SLOT(speedChange_slot()));
+
     connect(ui->reducedClimbPowerChB, SIGNAL(clicked()), this, SLOT(reducedClimbPower_set()));
 
     connect(ui->startPushButton, SIGNAL(clicked()), this, SLOT(start_clicked()));
@@ -141,6 +146,7 @@ void Dialog::typeOfFlight_changed()
         activePhaseOfFlight = "DESCENT";
 
         ui->CAS_MACH_rb->setChecked(true);
+        optionOfFlight_changed();
         ui->Gradient_rb->show();
         ui->EmergencyDescent_rb->show();
 
@@ -154,6 +160,7 @@ void Dialog::typeOfFlight_changed()
         activePhaseOfFlight = "CLIMB";
 
         ui->CAS_MACH_rb->setChecked(true);
+        optionOfFlight_changed();
         ui->Gradient_rb->hide();
         ui->EmergencyDescent_rb->hide();
 
@@ -166,6 +173,7 @@ void Dialog::typeOfFlight_changed()
     {
         activePhaseOfFlight = "CRUISE";
 
+        optionOfFlight_changed();
         ui->expediteChB->setChecked(false);
         ui->expediteChB->hide();
         ui->reducedClimbPowerChB->setChecked(false);
@@ -184,11 +192,29 @@ void Dialog::optionOfFlight_changed()
         ui->expediteChB->setChecked(false);
         ui->expediteChB->setEnabled(true);
 
+        ui->acc_decChB->setChecked(false);
+        ui->acc_decChB->setEnabled(false);
+        speedChange_slot();
+
         ui->reducedClimbPowerChB->setEnabled(true);
         ui->reducedClimbPowerChB->setChecked(false);
     }
     else if(ui->ROCD_rb->isChecked())
     {
+        double ROCD = qAbs(ui->ROCDLineEdit->text().toDouble());
+        if(ui->DESCENT_rb->isChecked())
+        {
+            ui->ROCDLineEdit->setText(QString::number(-1 * ROCD));
+        }
+        else if(ui->CLIMB_rb->isChecked())
+        {
+            ui->ROCDLineEdit->setText(QString::number(ROCD));
+        }
+        else if(ui->CRUISE_rb->isChecked())
+        {
+            ui->ROCDLineEdit->setText(QString::number(ROCD));
+        }
+
         activeFlightOption = "ROCD";
 
         ui->ROCDLineEdit->setEnabled(true);
@@ -196,17 +222,37 @@ void Dialog::optionOfFlight_changed()
         ui->expediteChB->setChecked(false);
         ui->expediteChB->setEnabled(false);
 
+        ui->acc_decChB->setEnabled(true);
+        speedChange_slot();
+
         ui->reducedClimbPowerChB->setEnabled(false);
         ui->reducedClimbPowerChB->setChecked(false);
     }
     else if(ui->Gradient_rb->isChecked())
     {
+        double GRAD = qAbs(ui->GradientLineEdit->text().toDouble());
+        if(ui->DESCENT_rb->isChecked())
+        {
+            ui->GradientLineEdit->setText(QString::number(-1 * GRAD));
+        }
+        else if(ui->CLIMB_rb->isChecked())
+        {
+            ui->GradientLineEdit->setText(QString::number(GRAD));
+        }
+        else if(ui->CRUISE_rb->isChecked())
+        {
+            ui->GradientLineEdit->setText(QString::number(GRAD));
+        }
+
         activeFlightOption = "GRAD";
 
         ui->GradientLineEdit->setEnabled(true);
         ui->ROCDLineEdit->setEnabled(false);
         ui->expediteChB->setChecked(false);
         ui->expediteChB->setEnabled(false);
+
+        ui->acc_decChB->setEnabled(true);
+        speedChange_slot();
     }
     else if(ui->EmergencyDescent_rb->isChecked())
     {
@@ -216,6 +262,9 @@ void Dialog::optionOfFlight_changed()
         ui->ROCDLineEdit->setEnabled(false);
         ui->expediteChB->setChecked(true);
         ui->expediteChB->setEnabled(false);
+
+        ui->reducedClimbPowerChB->setEnabled(false);
+        ui->reducedClimbPowerChB->setChecked(false);
 
         ui->CASLineEdit->setText(QString::number(V_MO));
         ui->MachLineEdit->setText(QString::number(M_MO));
@@ -231,6 +280,18 @@ void Dialog::reducedClimbPower_set()
     else if(ui->reducedClimbPowerChB->isChecked())
     {
         reducedClimbPower = false;
+    }
+}
+
+void Dialog::speedChange_slot()
+{
+    if(ui->acc_decChB->isChecked())
+    {
+        speedChange = true;
+    }
+    else
+    {
+        speedChange = false;
     }
 }
 
@@ -2139,11 +2200,12 @@ void Dialog::runTestFlightTrajectory()
     double Hp_actuall = Hp_init;
     double ACMass_actuall = ACMass_init;
     double Grad_actuall = Grad_init;
+    double fM_def = 0.6;
 
 
     while(Hp_actuall > 20000)
     {
-        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const);
+        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const, speedChange, fM_def_actual);
 
         Hp_vect << vect[0];
         ACMass_vect << vect[17];
@@ -2168,7 +2230,7 @@ void Dialog::runTestFlightTrajectory()
     {
         Grad_actuall += 0.01;
 
-        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const);
+        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const, speedChange, fM_def_actual);
 
         Hp_vect << vect[0];
         ACMass_vect << vect[17];
@@ -2230,11 +2292,12 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
     file.close();
 }
 
-QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad, const double &ACMass, const double &BankAngle, const double &time_c)
+QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad,
+                                 const double &ACMass, const double &BankAngle, const double &time_c, const bool &speedChange, const double &fM_def)
 {
     QVector<double> outVect;
 
-    double T, p, ro, CAS, TAS, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp, C_pow_red;
+    double T, p, ro, CAS, TAS, delta_TAS, TAS_act, CAS_act, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp, C_pow_red;
     QString flightConfig;
     bool expedite;
     if(ui->expediteChB->isChecked())
@@ -2325,6 +2388,8 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
         actualACMass = ACMass - FWeight;    // [kg]
+
+        CAS_act = CAS;
     }
 
     else if(flightOption == "ROCD") // Define ROCD and CAS and calculate the rest of flight parameters
@@ -2359,6 +2424,8 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
 
         ROCD = vROCD;
 
+
+
         if(activePhaseOfFlight == "DESCENT")
         {
             Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
@@ -2373,6 +2440,21 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         time = time_c;  // hodnota timera [s]
         dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
         delta_Hp = (ROCD / 60) * time;  // [ft]
+
+        if(speedChange == true) // accelerate or decelerate
+        {
+            // change in TAS speed
+            fM = fM_def;
+
+            delta_TAS = getDeltaTAS(TAS, delta_Hp, fM); // [kt]
+            TAS_act = TAS + delta_TAS;  // [kt]
+            CAS_act = mpsTOknots(TAStoCAS(knotsTOmps(TAS_act), p, ro)) ; // [kt]
+        }
+        else
+        {
+            CAS_act = CAS;
+        }
+
         grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
 
         FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60; // in [kg/s]
@@ -2435,6 +2517,21 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         ROCD = (delta_Hp/time) * 60;   // [ft/min]
 
         Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+
+        if(speedChange == true) // accelerate or decelerate
+        {
+            fM = fM_def;
+
+            // change in TAS speed
+            delta_TAS = getDeltaTAS(TAS, delta_Hp, fM); // [kt]
+            TAS_act = TAS + delta_TAS;  // [kt]
+            CAS_act = mpsTOknots(TAStoCAS(knotsTOmps(TAS_act), p, ro)) ; // [kt]
+        }
+        else
+        {
+            CAS_act = CAS;
+        }
+
         FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60;  // in [kg/s]
 
         FWeight = fuelWeight(FFlow, time);  // [kg]
@@ -2442,7 +2539,7 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
     }
 
     outVect.clear();
-    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass;
+    outVect << Hp << T << p << ro << CAS << TAS << Thr << D << mach << fM << ROCD << time << dist << delta_Hp << grad << FFlow << FWeight << ACMass << actualACMass << CAS_act;
 
     return outVect;
 }
@@ -2505,13 +2602,61 @@ void Dialog::parse_clicked()
     runTestFlightTrajectory();
 
 
-    QVector<double> outVect;
+    QVector<double> outVect, Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect;
     double ACMass_act = 65300;
     double time = 1;
-    double TAS_act = 250; // [kt]
-    double fM = 0.3;
-    double Hp_act = 10000; // [ft]
+    double CAS_act = 180;    // [kt]
+    double ROCD_act = 1500;
+    double GRAD_act = 3;
+    double M = 0.78;
+    double fM_def = 0.6;               //  CLIMB -> fM > 1 =>acceleration
+    double Hp_act = 10000;             // [ft]
+    double BankAngle = 0;
 
+    ACMass_vect << ACMass_act;
+    Time_vect << 0;
+    DIST_vect << 0;
+
+    QString PhaseOfFlight = "CLIMB";
+    QString flightOption = "GRAD";
+    bool speedChange = false;
+
+    QDir dir;
+
+
+    // when changing from DESCENT to CLIMB, change the "-" sign for ROCD ang GRAD to climb or descent correctly
+
+    //while(CAS_act < 200)
+    while(Hp_act < 11000)
+    {
+        outVect = BADAcalc(PhaseOfFlight, flightOption, Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, speedChange, fM_def);
+
+        Hp_vect << outVect[0];
+        CAS_vect << outVect[4];
+        TAS_vect << outVect[5];
+        Thr_vect << outVect[6];
+        D_vect << outVect[7];
+        M_vect << outVect[8];
+        fM_vect << outVect[9];
+        ROCD_vect << outVect[10];
+        Time_vect << Time_vect.last() + outVect[11];
+        DIST_vect << DIST_vect.last() + outVect[12];
+        GRAD_vect << outVect[14];
+        FFlow_vect << outVect[15];
+        FWeight_vect << FWeight_vect.last() + outVect[16];
+        ACMass_vect << outVect[18];
+
+        // update for future iteration
+        Hp_act += outVect[13];
+        ACMass_act = outVect[18];
+        CAS_act = outVect[19];
+    }
+
+
+    exportData(dir.currentPath() + "/flightTest.txt", Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
+
+
+    /*
     for(int i=0; i<50; i++)
     {
         outVect = speedChangecalc(activePhaseOfFlight, ACMass_act, time, TAS_act, fM, Hp_act, EngineType, 0);
@@ -2523,6 +2668,7 @@ void Dialog::parse_clicked()
 
         qDebug() << Hp_act << ACMass_act << TAS_act << ROCD_act;
     }
+    */
 
 
 }
@@ -2570,17 +2716,18 @@ void Dialog::EmergencyDescent_selected()
 
 void Dialog::TimeOut()
 {
-    double CAS_actuall = ui->CASLineEdit->text().toDouble();
     double MACH_actuall = ui->MachLineEdit->text().toDouble();
     double ROCD_actuall = ui->ROCDLineEdit->text().toDouble();
     double GRAD_actuall = ui->GradientLineEdit->text().toDouble();
     double BankAngle_actuall = ui->BankAngleLineEdit->text().toDouble();
+    double fM_def_actual = ui->fMLineEdit->text().toDouble();
 
 
-    QVector<double> vect = BADAcalc(activePhaseOfFlight, activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const);
+    QVector<double> vect = BADAcalc(activePhaseOfFlight, activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const, speedChange, fM_def_actual);
 
     Hp_actual += vect[13];
     ACMass_actual = vect[18];
+    CAS_actuall = vect[19];
 
     emit send_data(vect);   // send data from 1 calculation to graph dialog window
 }
@@ -2591,8 +2738,10 @@ void Dialog::start_clicked()
 
     timer_const = 1;    // timer in [s]
 
+    fM_def_actual = ui->fMLineEdit->text().toDouble();           // [-]
     Hp_actual = ui->Hp_0LineEdit->text().toDouble();             // [ft]
     CAS_init = ui->CASLineEdit->text().toDouble();               // [kt]
+    CAS_actuall = CAS_init;                                      // [kt]
     MACH_init = ui->MachLineEdit->text().toDouble();             // [-]
     ROCD_init = ui->ROCDLineEdit->text().toDouble();             // [ft/min]
     Grad_init = ui->GradientLineEdit->text().toDouble();         // [°]
