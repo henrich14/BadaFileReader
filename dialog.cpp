@@ -740,69 +740,83 @@ double Dialog::CASschedule(const double &altitude, const double &transAlt, const
     {
         if(altitude >= 0 && altitude < 1000)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
+            CAS_min = C_Vmin * corV_stall_LD;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
         }
         else if(altitude >= 1000 && altitude < 1500)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
         }
         else if(altitude >= 1500 && altitude < 2000)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
         }
         else if(altitude >= 2000 && altitude < 3000)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
         }
         else if(altitude >= 3000 && altitude < 6000)
         {
-            CAS_min = qMin(Vdes1["AV"],220);
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
+            //CAS_min = qMin(Vdes1["AV"],220);
         }
         else if(altitude >= 6000 && altitude < 10000)
         {
-            CAS_min = qMin(Vdes1["AV"],250);
+            CAS_min = qMin(Vdes1["AV"],220);
+            //CAS_min = qMin(Vdes1["AV"],250);
         }
         else if(altitude >= 10000 && altitude < transAlt)
         {
-            CAS_min = Vdes2["AV"];
+            CAS_min = qMin(Vdes1["AV"],250);
+            //CAS_min = Vdes2["AV"];
         }
         else if(altitude >= transAlt)
         {
-            CAS_min = Mdes["AV"];
+            CAS_min = Vdes2["AV"];
+            //CAS_min = mpsTOknots(TAStoCAS(MtoTAS(Mdes["AV"])));
         }
     }
     else if(EngType == "Piston")
     {
         if(altitude >= 0 && altitude < 500)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES5;
+            CAS_min = C_Vmin * corV_stall_LD;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES5;
         }
         else if(altitude >= 500 && altitude < 1000)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES6;
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES5;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES6;
         }
         else if(altitude >= 1000 && altitude < 1500)
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES7;
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES6;
+            //CAS_min = C_Vmin * corV_stall_LD + v_dDES7;
         }
         else if(altitude >= 1500 && altitude < 10000)
         {
-            CAS_min = Vdes1["AV"];
+            CAS_min = C_Vmin * corV_stall_LD + v_dDES7;
+            //CAS_min = Vdes1["AV"];
         }
         else if(altitude >= 10000 && altitude < transAlt)
         {
-            CAS_min = Vdes2["AV"];
+            CAS_min = Vdes1["AV"];
+            //CAS_min = Vdes2["AV"];
         }
         else if(altitude >= transAlt)
         {
-            CAS_min = Mdes["AV"];
+            CAS_min = Vdes2["AV"];
+            //CAS_min = mpsTOknots(TAStoCAS(MtoTAS(Mdes["AV"])));
         }
     }
 
     // check minimal speed for each phase of flight
 
-    v_min = calculateVmin(phase);
-    CAS_min = v_min; //qMin(v_min,CAS_min);                                                   // opravit
+    //v_min = calculateVmin(phase);
+    //CAS_min = v_min; //qMin(v_min,CAS_min);                                                   // opravit
 
     return CAS_min;
 }
@@ -2603,33 +2617,43 @@ void Dialog::parse_clicked()
 
 
     QVector<double> outVect, Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect;
-    double ACMass_act = 65300;
+    double ACMass_act = 41150*1.2;
+    qDebug() << ACMass_act;
     double time = 1;
-    double CAS_act = 180;    // [kt]
-    double ROCD_act = 1500;
-    double GRAD_act = 3;
+    double CAS_act = 250;    // [kt]
+    double ROCD_act = -1500;        // "-" for descent at ROCD
+    double GRAD_act = -3;           // "-" for descent at angle
     double M = 0.78;
-    double fM_def = 0.6;               //  CLIMB -> fM > 1 =>acceleration
+    double fM_def = 0.4;               //  CLIMB -> fM > 1 =>acceleration
     double Hp_act = 10000;             // [ft]
     double BankAngle = 0;
+
+    double transAlt = transitionAltitude(knotsTOmps(CAS_act), M);   // [ft] transition altitude for init CAS and M
 
     ACMass_vect << ACMass_act;
     Time_vect << 0;
     DIST_vect << 0;
-
-    QString PhaseOfFlight = "CLIMB";
-    QString flightOption = "GRAD";
-    bool speedChange = false;
 
     QDir dir;
 
 
     // when changing from DESCENT to CLIMB, change the "-" sign for ROCD ang GRAD to climb or descent correctly
 
-    //while(CAS_act < 200)
-    while(Hp_act < 11000)
+    while(Hp_act > 0)
     {
-        outVect = BADAcalc(PhaseOfFlight, flightOption, Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, speedChange, fM_def);
+
+        QString flightConfig = getFlightConfiguration("DESCENT", Hp_act, rwyElev, CAS_act); // get flight configuration
+
+        double v_min = CASschedule(Hp_act, transAlt, flightConfig, ACMass_act, EngineType);    // [kt] get minimal speed for set altitude
+
+        if(CAS_act > v_min)
+        {
+            outVect = BADAcalc("DESCENT", "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def);
+        }
+        else
+        {
+            outVect = BADAcalc("DESCENT", "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def);
+        }
 
         Hp_vect << outVect[0];
         CAS_vect << outVect[4];
@@ -2652,24 +2676,7 @@ void Dialog::parse_clicked()
         CAS_act = outVect[19];
     }
 
-
-    exportData(dir.currentPath() + "/flightTest.txt", Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
-
-
-    /*
-    for(int i=0; i<50; i++)
-    {
-        outVect = speedChangecalc(activePhaseOfFlight, ACMass_act, time, TAS_act, fM, Hp_act, EngineType, 0);
-
-        Hp_act = outVect[0];
-        ACMass_act = outVect[1];
-        TAS_act = outVect[2];
-        double ROCD_act = outVect[3];
-
-        qDebug() << Hp_act << ACMass_act << TAS_act << ROCD_act;
-    }
-    */
-
+    exportData(dir.currentPath() + "/fM_" + QString::number(fM_def) + ".txt", Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 
 }
 
