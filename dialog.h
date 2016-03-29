@@ -38,7 +38,7 @@ public:
     void readAPFfile(const QString &fileName);
     void readOPFfile(const QString &fileName);
     QStringList parseLine(const QString &line);
-    double CASschedule(const double &altitude, const double &transAlt, const QString &phase, const double &ACMass, const QString &EngType);
+    double CASschedule(const QString &phase, const double &altitude, const double &rwyElev, const double &transAlt, const double &ACMass, const QString &EngType);
     double calculateShareFactor(const double &M, const double &T, const QString &factor);
     double calculateMaxClimbThrust(const double &altitude, const double &vTAS, const QString &EngType);
     double calculateMaxCruiseThrust(const double &maxClimbThrust);
@@ -119,11 +119,11 @@ private:
     QString companyName;
     QHash<QString, int> Vcl1;
     QHash<QString, int> Vcl2;
-    QHash<QString, int> Mcl;
+    QHash<QString, double> Mcl;
     QHash<QString, int> Vcr1;
     QHash<QString, int> Vcr2;
-    QHash<QString, int> Mcr;
-    QHash<QString, int> Mdes;
+    QHash<QString, double> Mcr;
+    QHash<QString, double> Mdes;
     QHash<QString, int> Vdes1;
     QHash<QString, int> Vdes2;
 

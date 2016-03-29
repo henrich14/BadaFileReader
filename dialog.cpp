@@ -40,7 +40,7 @@ const double Hp_trop = 11000; // [m] altitude of tropopause
 ///////////////////////////////////////////
 
 /////////// AIRPORT PARAMETERS ///////////
-const double rwyElev = 1500; // [ft] geopotential pressure altitude (altitude AMSL)
+const double rwyElev = 750; // [ft] geopotential pressure altitude (altitude AMSL)
 
 
 /////// GLOBAL AIRCRAFT PARAMETERS ///////
@@ -50,8 +50,17 @@ const int v_dDES2 = 10;
 const int v_dDES3 = 20;
 const int v_dDES4 = 50;
 const int v_dDES5 = 5;
-const int v_dDES6 = 100;
-const int v_dDES7 = 200;
+const int v_dDES6 = 10;
+const int v_dDES7 = 20;
+
+const int v_dCL1 = 5;
+const int v_dCL2 = 10;
+const int v_dCL3 = 30;
+const int v_dCL4 = 60;
+const int v_dCL5 = 80;
+const int v_dCL6 = 20;
+const int v_dCL7 = 30;
+const int v_dCL8 = 35;
 
 // minimum speed coeficinets [-]
 const double C_Vmin = 1.3;
@@ -725,100 +734,173 @@ QStringList Dialog::parseLine(const QString &line)
     return parsedList;
 }
 
-double Dialog::CASschedule(const double &altitude, const double &transAlt, const QString &phase, const double &ACMass, const QString &EngType)
+double Dialog::CASschedule(const QString &phase, const double &altitude, const double &rwyElev, const double &transAlt, const double &ACMass, const QString &EngType)
 {
     // calculate the CAS schedule based on altitude; stall speed is corrected for the difference in ACMass from the referrence mass
-    // input altitude [ft]; transition Altitude [ft]; phase [TO / IC / CR / AP / LD]; Actual Aircraft Mass [kg]
-    // output CAS_min [kt]
+    // input altitude [ft]; transition Altitude [ft]; phase [DESCENT / CRUISE / CLIMB]; Actual Aircraft Mass [kg]
+    // output CAS [kt]
 
-    double CAS_min = 0.0;
-    double v_min = 0.0;
+    double CAS = 0.0;
     double corV_stall_LD = correctedSpeed(V_stall["LD"], ACMass);
+    double corV_stall_TO = correctedSpeed(V_stall["TO"], ACMass);
+    double alt = altitude - rwyElev;
 
-    // calculate speed schedule depending on altitude
-    if(EngType == "Jet" || EngType == "Turboprop")
+    if(phase == "DESCENT")
     {
-        if(altitude >= 0 && altitude < 1000)
+        if(EngType == "Jet" || EngType == "Turboprop")
         {
-            CAS_min = C_Vmin * corV_stall_LD;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
+            if(altitude >= transAlt)
+            {
+                CAS = Vdes2["AV"];
+            }
+            else if(altitude >= 10000 && altitude < transAlt)
+            {
+                CAS = qMin(Vdes1["AV"],250);
+            }
+            else
+            {
+                if(alt >= 0 && alt < 1000)
+                {
+                    CAS = C_Vmin * corV_stall_LD;
+                }
+                else if(alt >= 1000 && alt < 1500)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES1;
+                }
+                else if(alt >= 1500 && alt < 2000)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES2;
+                }
+                else if(alt >= 2000 && alt < 3000)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES3;
+                }
+                else if(alt >= 3000 && alt < 6000)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES4;
+                }
+                else if(alt >= 6000 && alt < 10000)
+                {
+                    CAS = qMin(Vdes1["AV"],220);
+                }
+            }
         }
-        else if(altitude >= 1000 && altitude < 1500)
+        else if(EngType == "Piston")
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES1;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
-        }
-        else if(altitude >= 1500 && altitude < 2000)
-        {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES2;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
-        }
-        else if(altitude >= 2000 && altitude < 3000)
-        {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES3;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
-        }
-        else if(altitude >= 3000 && altitude < 6000)
-        {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES4;
-            //CAS_min = qMin(Vdes1["AV"],220);
-        }
-        else if(altitude >= 6000 && altitude < 10000)
-        {
-            CAS_min = qMin(Vdes1["AV"],220);
-            //CAS_min = qMin(Vdes1["AV"],250);
-        }
-        else if(altitude >= 10000 && altitude < transAlt)
-        {
-            CAS_min = qMin(Vdes1["AV"],250);
-            //CAS_min = Vdes2["AV"];
-        }
-        else if(altitude >= transAlt)
-        {
-            CAS_min = Vdes2["AV"];
-            //CAS_min = mpsTOknots(TAStoCAS(MtoTAS(Mdes["AV"])));
+            if(altitude >= transAlt)
+            {
+                CAS = Vdes2["AV"];
+            }
+            else if(altitude >= 10000 && altitude < transAlt)
+            {
+                CAS = Vdes1["AV"];
+            }
+            else
+            {
+                if(alt >= 0 && alt < 500)
+                {
+                    CAS = C_Vmin * corV_stall_LD;
+                }
+                else if(alt >= 500 && alt < 1000)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES5;
+                }
+                else if(alt >= 1000 && alt < 1500)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES6;
+                }
+                else if(alt >= 1500 && alt < 10000)
+                {
+                    CAS = C_Vmin * corV_stall_LD + v_dDES7;
+                }
+            }
         }
     }
-    else if(EngType == "Piston")
+    else if(phase == "CLIMB")
     {
-        if(altitude >= 0 && altitude < 500)
+        if(EngType == "Jet" || EngType == "Turboprop")
         {
-            CAS_min = C_Vmin * corV_stall_LD;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES5;
+            if(altitude >= transAlt)
+            {
+                double T = temperatureDetermination(ftTOm(altitude));
+                double p = airPressureDetermination(ftTOm(altitude));
+                double ro = airDensityDetermination(T, p);
+                CAS = mpsTOknots(TAStoCAS(MtoTAS(Mcl["AV"], T), p, ro));
+            }
+            else if(altitude >= 10000 && altitude < transAlt)
+            {
+                CAS = Vcl1["AV"];
+            }
+            else
+            {
+
+                if(alt >= 0 && alt < 1500)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL1;
+                }
+                else if(alt >= 1500 && alt < 3000)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL2;
+                }
+                else if(alt >= 3000 && alt < 4000)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL3;
+                }
+                else if(alt >= 4000 && alt < 5000)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL4;
+                }
+                else if(alt >= 5000 && alt < 6000)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL5;
+                }
+                else if(alt >= 6000 && alt < 10000)
+                {
+                    CAS = qMin(Vcl1["AV"],250);
+                }
+
+            }
         }
-        else if(altitude >= 500 && altitude < 1000)
+        else if(EngType == "Piston")
         {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES5;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES6;
-        }
-        else if(altitude >= 1000 && altitude < 1500)
-        {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES6;
-            //CAS_min = C_Vmin * corV_stall_LD + v_dDES7;
-        }
-        else if(altitude >= 1500 && altitude < 10000)
-        {
-            CAS_min = C_Vmin * corV_stall_LD + v_dDES7;
-            //CAS_min = Vdes1["AV"];
-        }
-        else if(altitude >= 10000 && altitude < transAlt)
-        {
-            CAS_min = Vdes1["AV"];
-            //CAS_min = Vdes2["AV"];
-        }
-        else if(altitude >= transAlt)
-        {
-            CAS_min = Vdes2["AV"];
-            //CAS_min = mpsTOknots(TAStoCAS(MtoTAS(Mdes["AV"])));
+            if(altitude >= transAlt)
+            {
+                double T = temperatureDetermination(ftTOm(altitude));
+                double p = airPressureDetermination(ftTOm(altitude));
+                double ro = airDensityDetermination(T, p);
+                CAS = mpsTOknots(TAStoCAS(MtoTAS(Mcl["AV"], T), p, ro));
+            }
+            else if(altitude >= 10000 && altitude < transAlt)
+            {
+                CAS = Vcl2["AV"];
+            }
+            else
+            {
+                if(alt >= 0 && alt < 500)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL6;
+                }
+                else if(alt >= 500 && alt < 1000)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL7;
+                }
+                else if(alt >= 1000 && alt < 1500)
+                {
+                    CAS = C_Vmin * corV_stall_TO + v_dCL8;
+                }
+                else if(alt >= 1500 && alt < 10000)
+                {
+                    CAS = qMin(Vcl1["AV"],250);
+                }
+            }
         }
     }
+    else if(phase == "CRUISE")
+    {
 
-    // check minimal speed for each phase of flight
+    }
 
-    //v_min = calculateVmin(phase);
-    //CAS_min = v_min; //qMin(v_min,CAS_min);                                                   // opravit
-
-    return CAS_min;
+    return CAS;
 }
 
 double Dialog::calculateShareFactor(const double &M, const double &T, const QString &factor)
@@ -1357,7 +1439,7 @@ void Dialog::flightEnvelope_operational()
             MACH = TAStoM(TAS,T);
             MACH_vect_max << MACH;
 
-            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            vmin = CASschedule("DESCENT" ,Hp, rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             minCAS = vmin;
             if(EngineType == "Jet")
             {
@@ -1386,7 +1468,7 @@ void Dialog::flightEnvelope_operational()
             CAS = TAStoCAS(TAS,p,ro);
             CAS_vect_max << mpsTOknots(CAS);
 
-            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            vmin = CASschedule("DESCENT", Hp, rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             minCAS = vmin;
             if(EngineType == "Jet")
             {
@@ -1415,7 +1497,7 @@ void Dialog::flightEnvelope_operational()
             CAS = TAStoCAS(TAS,p,ro);
             CAS_vect_max << mpsTOknots(CAS);
 
-            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            vmin = CASschedule("DESCENT", Hp, rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             minCAS = vmin;
             if(EngineType == "Jet")
             {
@@ -1843,7 +1925,7 @@ void Dialog::run()
                 fM_vect << fM;
 
                 // test the min speed and buffeting speed limits for Jet, test altitude
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
@@ -1870,7 +1952,7 @@ void Dialog::run()
                     fM_vect << fM;
 
                     // test the min speed and buffeting speed limits for Jet, test altitude
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                    double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
@@ -1894,7 +1976,7 @@ void Dialog::run()
                     fM_vect << fM;
 
                     // test the min speed and buffeting speed limits for Jet, test altitude
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                    double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
@@ -1919,7 +2001,7 @@ void Dialog::run()
                 flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, mpsTOknots(CAS));
 
                 // test the min speed and buffeting speed limits for Jet, test altitude
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
@@ -1989,7 +2071,7 @@ void Dialog::run()
             D_vect << D;
 
             // test the min speed and buffeting speed limits for Jet, test altitude
-            double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+            double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             double minCAS = vmin;
             if(EngineType == "Jet")
             {
@@ -2077,7 +2159,7 @@ void Dialog::run()
                 fM_vect << fM;
 
                 // test the min speed and buffeting speed limits for Jet, test altitude
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
@@ -2104,7 +2186,7 @@ void Dialog::run()
                     fM_vect << fM;
 
                     // test the min speed and buffeting speed limits for Jet, test altitude
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                    double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
@@ -2128,7 +2210,7 @@ void Dialog::run()
                     fM_vect << fM;
 
                     // test the min speed and buffeting speed limits for Jet, test altitude
-                    double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                    double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                     double minCAS = vmin;
                     if(EngineType == "Jet")
                     {
@@ -2153,7 +2235,7 @@ void Dialog::run()
                 flightConfig = getFlightConfiguration(activePhaseOfFlight, Hp_vect.at(i), rwyElev, mpsTOknots(CAS));
 
                 // test the min speed and buffeting speed limits for Jet, test altitude
-                double vmin = CASschedule(Hp_vect.at(i),transAlt, flightConfig, actualACMass, EngineType);  // [kt]
+                double vmin = CASschedule(activePhaseOfFlight, Hp_vect.at(i), rwyElev, transAlt, actualACMass, EngineType);  // [kt]
                 double minCAS = vmin;
                 if(EngineType == "Jet")
                 {
@@ -2612,21 +2694,19 @@ QVector<double> Dialog::speedChangecalc(const QString &activePhaseOfFlight, cons
 void Dialog::parse_clicked()
 {
     run();
-
     runTestFlightTrajectory();
 
-
     QVector<double> outVect, Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect;
-    double ACMass_act = 41150*1.2;
-    qDebug() << ACMass_act;
+    double ACMass_act = 65300;
     double time = 1;
-    double CAS_act = 250;    // [kt]
-    double ROCD_act = -1500;        // "-" for descent at ROCD
-    double GRAD_act = -3;           // "-" for descent at angle
+    double CAS_act = 120;    // [kt]
+    double ROCD_act = 1500;        // "-" for descent at ROCD
+    double GRAD_act = 3;           // "-" for descent at angle
     double M = 0.78;
-    double fM_def = 0.4;               //  CLIMB -> fM > 1 =>acceleration
-    double Hp_act = 10000;             // [ft]
+    double fM_def = 0.6;               //  CLIMB -> fM > 1 =>acceleration
+    double Hp_act = rwyElev;             // [ft]
     double BankAngle = 0;
+    QString phaseOfFlight = "CLIMB";
 
     double transAlt = transitionAltitude(knotsTOmps(CAS_act), M);   // [ft] transition altitude for init CAS and M
 
@@ -2634,25 +2714,22 @@ void Dialog::parse_clicked()
     Time_vect << 0;
     DIST_vect << 0;
 
-    QDir dir;
-
-
     // when changing from DESCENT to CLIMB, change the "-" sign for ROCD ang GRAD to climb or descent correctly
 
-    while(Hp_act > 0)
+    //while(Hp_act > rwyElev)
+    while(Hp_act < 15000)
     {
+        double v_min = CASschedule(phaseOfFlight, Hp_act, rwyElev, transAlt, ACMass_act, EngineType);    // [kt] get minimal speed for set altitude
 
-        QString flightConfig = getFlightConfiguration("DESCENT", Hp_act, rwyElev, CAS_act); // get flight configuration
-
-        double v_min = CASschedule(Hp_act, transAlt, flightConfig, ACMass_act, EngineType);    // [kt] get minimal speed for set altitude
-
-        if(CAS_act > v_min)
+        //if(CAS_act > v_min)
+        if(CAS_act < v_min)
         {
-            outVect = BADAcalc("DESCENT", "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def);
+            qDebug() << v_min;
+            outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def);
         }
         else
         {
-            outVect = BADAcalc("DESCENT", "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def);
+            outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def);
         }
 
         Hp_vect << outVect[0];
@@ -2676,6 +2753,7 @@ void Dialog::parse_clicked()
         CAS_act = outVect[19];
     }
 
+    QDir dir;
     exportData(dir.currentPath() + "/fM_" + QString::number(fM_def) + ".txt", Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
 
 }
@@ -2826,7 +2904,7 @@ void Dialog::flightEnvelope_certified()
             MACH = TAStoM(TAS,T);
             MACH_vect_max << MACH;
 
-            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            vmin = CASschedule(activePhaseOfFlight, Hp, rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             minCAS = vmin;
             if(EngineType == "Jet")
             {
@@ -2855,7 +2933,7 @@ void Dialog::flightEnvelope_certified()
             CAS = TAStoCAS(TAS,p,ro);
             CAS_vect_max << mpsTOknots(CAS);
 
-            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            vmin = CASschedule(activePhaseOfFlight, Hp, rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             minCAS = vmin;
             if(EngineType == "Jet")
             {
@@ -2884,7 +2962,7 @@ void Dialog::flightEnvelope_certified()
             CAS = TAStoCAS(TAS,p,ro);
             CAS_vect_max << mpsTOknots(CAS);
 
-            vmin = CASschedule(Hp, transAlt, "CR", actualACMass, EngineType);  // [kt]
+            vmin = CASschedule(activePhaseOfFlight, Hp, rwyElev, transAlt, actualACMass, EngineType);  // [kt]
             minCAS = vmin;
             if(EngineType == "Jet")
             {
