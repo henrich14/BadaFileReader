@@ -825,7 +825,8 @@ double Dialog::CASschedule(const QString &phase, const double &altitude, const d
                 double T = temperatureDetermination(ftTOm(altitude));
                 double p = airPressureDetermination(ftTOm(altitude));
                 double ro = airDensityDetermination(T, p);
-                CAS = mpsTOknots(TAStoCAS(MtoTAS(Mcl["AV"], T), p, ro));
+                CAS = mpsTOknots(TAStoCAS(MtoTAS(Mcl["AV"] / 100, T), p, ro));
+                qDebug() << Mcl["AV"] / 100;
             }
             else if(altitude >= 10000 && altitude < transAlt)
             {
@@ -868,7 +869,7 @@ double Dialog::CASschedule(const QString &phase, const double &altitude, const d
                 double T = temperatureDetermination(ftTOm(altitude));
                 double p = airPressureDetermination(ftTOm(altitude));
                 double ro = airDensityDetermination(T, p);
-                CAS = mpsTOknots(TAStoCAS(MtoTAS(Mcl["AV"], T), p, ro));
+                CAS = mpsTOknots(TAStoCAS(MtoTAS(Mcl["AV"] / 100, T), p, ro));
             }
             else if(altitude >= 10000 && altitude < transAlt)
             {
@@ -1076,24 +1077,24 @@ double Dialog::calculateDrag(const double &m, const double &ro, const double &vT
 
     if(C_D0["AP"] == 0 || C_D0["LD"] == 0 || C_D2["AP"] == 0 || C_D2["LD"] == 0 || C_D0deltaLDG == 0)
     {
-        CD = C_D0[config]+ C_D2[config] * CL*CL;
+        CD = C_D0["CR"]+ C_D2["CR"] * CL*CL;
     }
     else
     {
-        if(config == "CR")
+        if(config == "CR" || config == "TO" || config == "IC")
         {
             // nominal conditions
-            CD = C_D0[config] + C_D2[config] * CL*CL;
+            CD = C_D0["CR"] + C_D2["CR"] * CL*CL;
         }
         else if(config == "AP")
         {
             // approach configuration
-            CD = C_D0[config]+ C_D2[config] * CL*CL;
+            CD = C_D0["AP"]+ C_D2["AP"] * CL*CL;
         }
         else if(config == "LD")
         {
             // landing configuration
-            CD = C_D0[config] + C_D0deltaLDG + C_D2[config] * CL*CL;
+            CD = C_D0["LD"] + C_D0deltaLDG + C_D2["LD"] * CL*CL;
         }
     }
 
@@ -1116,7 +1117,7 @@ QString Dialog::getFlightConfiguration(const QString &phase, const double &altit
     double v_min_cruise = calculateVmin("CR");
     double v_min_approach = calculateVmin("AP");
 
-    double ALT = altitude - rwyElevation;   // elevatoin above the RWY
+    double ALT = altitude - rwyElevation;   // elevation above the RWY
 
     if(phase == "CLIMB")
     {
@@ -2297,11 +2298,11 @@ void Dialog::runTestFlightTrajectory()
     double ACMass_actuall = ACMass_init;
     double Grad_actuall = Grad_init;
     double fM_def = 0.6;
-
+    double transAlt = transitionAltitude(knotsTOmps(CAS_init), Mach_init);
 
     while(Hp_actuall > 20000)
     {
-        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const, speedChange, fM_def_actual);
+        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const, speedChange, fM_def, transAlt);
 
         Hp_vect << vect[0];
         ACMass_vect << vect[17];
@@ -2326,7 +2327,7 @@ void Dialog::runTestFlightTrajectory()
     {
         Grad_actuall += 0.01;
 
-        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const, speedChange, fM_def_actual);
+        vect = BADAcalc(PhaseOfFlight, flightOption, Hp_actuall, CAS_init, Mach_init, ROCD_init, Grad_actuall, ACMass_actuall, BannkAngle, timer_const, speedChange, fM_def, transAlt);
 
         Hp_vect << vect[0];
         ACMass_vect << vect[17];
@@ -2389,11 +2390,11 @@ void Dialog::exportData(const QString &filename, const QVector<double> &Hp, cons
 }
 
 QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad,
-                                 const double &ACMass, const double &BankAngle, const double &time_c, const bool &speedChange, const double &fM_def)
+                                 const double &ACMass, const double &BankAngle, const double &time_c, const bool &speedChange, const double &fM_def, const double &transAlt)
 {
     QVector<double> outVect;
 
-    double T, p, ro, CAS, TAS, delta_TAS, TAS_act, CAS_act, Thr_max_climb, Thr, D, mach, fM, transAlt, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp, C_pow_red;
+    double T, p, ro, CAS, TAS, delta_TAS, TAS_act, CAS_act, Thr_max_climb, Thr, D, mach, fM, ROCD, time, dist, grad, FFlow, FWeight, actualACMass, delta_Hp, C_pow_red;
     QString flightConfig;
     bool expedite;
     if(ui->expediteChB->isChecked())
@@ -2407,7 +2408,7 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
     C_pow_red = calculateReducedClimbPower(Hp, ACMass, EngineType);  // reduced power constant for CLIMB
 
     // prevodova vyska - crossover altitude / transition altitude
-    transAlt = transitionAltitude(knotsTOmps(vCAS),vMach); // vypocet crossover alt pre definovanu CAS a M
+    //transAlt = transitionAltitude(knotsTOmps(vCAS),vMach); // vypocet crossover alt pre definovanu CAS a M
 
     double minAlt = qMin(mTOft(Hp_trop), transAlt);    // calcualtion of smaller value of altitude between Hp_trop and TransAlt
     double maxAlt = qMax(mTOft(Hp_trop), transAlt);    // calcualtion of greater value of altitude between Hp_trop and TransAlt
@@ -2470,6 +2471,7 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         {
             Thr = Thr_max_climb;
         }
+
         D = calculateDrag(ACMass, ro, knotsTOmps(TAS), BankAngle, flightConfig, expedite);
 
         ROCD = mpsTOftpmin(ROCDcalc(T, knotsTOmps(TAS), Thr, D, ACMass, fM, C_pow_red, activePhaseOfFlight));
@@ -2506,7 +2508,10 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         {
             if(minAlt == transAlt)
             {
-                fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");
+                mach = vMach;
+                fM = calculateShareFactor(mach, T, "CONSTANT_MACH_BELOW_TROPOPAUSE");                
+                TAS = mpsTOknots(MtoTAS(mach, T));
+                CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS), p, ro));
             }
             else if(minAlt == mTOft(Hp_trop))
             {
@@ -2515,23 +2520,13 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         }
         else if(Hp >= maxAlt)
         {
-            fM = calculateShareFactor(mach, T, "CONSTANT_CAS_ABOVE_TROPOPAUSE");
+            mach = vMach;
+            fM = calculateShareFactor(mach, T, "CONSTANT_MACH_ABOVE_TROPOPAUSE");
+            TAS = mpsTOknots(MtoTAS(mach, T));
+            CAS = mpsTOknots(TAStoCAS(knotsTOmps(TAS), p, ro));
         }
 
-        ROCD = vROCD;
-
-
-
-        if(activePhaseOfFlight == "DESCENT")
-        {
-            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
-        }
-        else if(activePhaseOfFlight == "CLIMB")
-        {
-            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/(knotsTOmps(TAS)*C_pow_red)) + D;  // musim dopocitat tah z ROCD
-        }
-
-        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;
+        ROCD = vROCD;      
 
         time = time_c;  // hodnota timera [s]
         dist = mtoNM(getFlightDistance(time, knotsTOmps(TAS), BankAngle_actual));    // [NM]
@@ -2549,6 +2544,16 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         else
         {
             CAS_act = CAS;
+            qDebug() << "Above Trans Alt" << mach << fM;
+        }
+
+        if(activePhaseOfFlight == "DESCENT")
+        {
+            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+        }
+        else if(activePhaseOfFlight == "CLIMB" || activePhaseOfFlight == "CRUISE")
+        {
+            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/(knotsTOmps(TAS)*C_pow_red)) + D;  // musim dopocitat tah z ROCD
         }
 
         grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
@@ -2612,7 +2617,7 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         delta_Hp = mTOft(qTan((grad/180)*PI) * NMtom(dist));   // [ft]
         ROCD = (delta_Hp/time) * 60;   // [ft/min]
 
-        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+
 
         if(speedChange == true) // accelerate or decelerate
         {
@@ -2627,6 +2632,8 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
         {
             CAS_act = CAS;
         }
+
+        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
 
         FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60;  // in [kg/s]
 
@@ -2699,16 +2706,17 @@ void Dialog::parse_clicked()
     QVector<double> outVect, Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect;
     double ACMass_act = 65300;
     double time = 1;
-    double CAS_act = 120;    // [kt]
+    double CAS_act = 250;    // [kt]
+    //double CAS_act = C_VminTO * correctedSpeed(V_stall["TO"], ACMass_act);  // Init speed for CLIMB from airport threshold corrected for aircraft mass
     double ROCD_act = 1500;        // "-" for descent at ROCD
-    double GRAD_act = 3;           // "-" for descent at angle
+    double GRAD_act = -3;           // "-" for descent at angle
     double M = 0.78;
-    double fM_def = 0.6;               //  CLIMB -> fM > 1 =>acceleration
-    double Hp_act = rwyElev;             // [ft]
+    double fM_def = 0.8;               //  CLIMB -> fM < 1 =>acceleration
+    double Hp_act = 10000;             // [ft]
     double BankAngle = 0;
-    QString phaseOfFlight = "CLIMB";
+    QString phaseOfFlight = "DESCENT";
 
-    double transAlt = transitionAltitude(knotsTOmps(CAS_act), M);   // [ft] transition altitude for init CAS and M
+    double transAlt = transitionAltitude(knotsTOmps(300), M);   // [ft] transition altitude for init CAS and M
 
     ACMass_vect << ACMass_act;
     Time_vect << 0;
@@ -2716,20 +2724,21 @@ void Dialog::parse_clicked()
 
     // when changing from DESCENT to CLIMB, change the "-" sign for ROCD ang GRAD to climb or descent correctly
 
-    //while(Hp_act > rwyElev)
-    while(Hp_act < 15000)
+    // FOR CLIMB PHASE OF FLIGHT
+    /*
+    while(Hp_act < 38000)
     {
         double v_min = CASschedule(phaseOfFlight, Hp_act, rwyElev, transAlt, ACMass_act, EngineType);    // [kt] get minimal speed for set altitude
 
         //if(CAS_act > v_min)
         if(CAS_act < v_min)
         {
-            qDebug() << v_min;
-            outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def);
+            outVect = BADAcalc(phaseOfFlight, "ROCD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def, transAlt);
         }
         else
         {
-            outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def);
+
+            outVect = BADAcalc(phaseOfFlight, "ROCD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def, transAlt);
         }
 
         Hp_vect << outVect[0];
@@ -2752,6 +2761,44 @@ void Dialog::parse_clicked()
         ACMass_act = outVect[18];
         CAS_act = outVect[19];
     }
+    */
+
+    // FOR DESCENT PHASE OF FLIGHT
+    while(Hp_act > rwyElev)
+    {
+        double v_min = CASschedule(phaseOfFlight, Hp_act, rwyElev, transAlt, ACMass_act, EngineType);    // [kt] get minimal speed for set altitude
+
+        if(CAS_act > v_min)
+        {
+            outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def, transAlt);
+        }
+        else
+        {
+
+            outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def, transAlt);
+        }
+
+        Hp_vect << outVect[0];
+        CAS_vect << outVect[4];
+        TAS_vect << outVect[5];
+        Thr_vect << outVect[6];
+        D_vect << outVect[7];
+        M_vect << outVect[8];
+        fM_vect << outVect[9];
+        ROCD_vect << outVect[10];
+        Time_vect << Time_vect.last() + outVect[11];
+        DIST_vect << DIST_vect.last() + outVect[12];
+        GRAD_vect << outVect[14];
+        FFlow_vect << outVect[15];
+        FWeight_vect << FWeight_vect.last() + outVect[16];
+        ACMass_vect << outVect[18];
+
+        // update for future iteration
+        Hp_act += outVect[13];
+        ACMass_act = outVect[18];
+        CAS_act = outVect[19];
+    }
+
 
     QDir dir;
     exportData(dir.currentPath() + "/fM_" + QString::number(fM_def) + ".txt", Hp_vect, ACMass_vect, CAS_vect, TAS_vect, M_vect, ROCD_vect, GRAD_vect, FFlow_vect, FWeight_vect, Time_vect, DIST_vect, Thr_vect, D_vect, fM_vect);
@@ -2807,8 +2854,10 @@ void Dialog::TimeOut()
     double BankAngle_actuall = ui->BankAngleLineEdit->text().toDouble();
     double fM_def_actual = ui->fMLineEdit->text().toDouble();
 
+    double transAlt = transitionAltitude(knotsTOmps(CAS_init), MACH_init);
 
-    QVector<double> vect = BADAcalc(activePhaseOfFlight, activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const, speedChange, fM_def_actual);
+
+    QVector<double> vect = BADAcalc(activePhaseOfFlight, activeFlightOption, Hp_actual, CAS_actuall, MACH_actuall, ROCD_actuall, GRAD_actuall, ACMass_actual, BankAngle_actuall, timer_const, speedChange, fM_def_actual, transAlt);
 
     Hp_actual += vect[13];
     ACMass_actual = vect[18];

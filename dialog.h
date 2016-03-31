@@ -84,7 +84,7 @@ public:
     void runTestFlightTrajectory();
     void exportData(const QString &filename, const QVector<double> &Hp, const QVector<double> &ACMass, const QVector<double> &CAS, const QVector<double> &TAS, const QVector<double> &MACH, const QVector<double> &ROCD, const QVector<double> &gradient, const QVector<double> &FuelFlow, const QVector<double> &Fuel, const QVector<double> &Time, const QVector<double> &Distance, const QVector<double> &Thr, const QVector<double> &D, const QVector<double> &fM);
     QVector<double> BADAcalc(const QString activePhaseOfFlight, const QString &flightOption, const double &Hp, const double &vCAS, const double &vMach, const double &vROCD, const double &vGrad,
-                             const double &ACMass, const double &BankAngle, const double &time_c, const bool &speedChange, const double &fM_def);
+                             const double &ACMass, const double &BankAngle, const double &time_c, const bool &speedChange, const double &fM_def, const double &transAlt);
     QVector<double> speedChangecalc(const QString &activePhaseOfFlight, const double &ACMass, const double &time, const double &TAS, const double &fM, const double &Hp,
                                     const QString &EngineType, const double BankAngle);
 
