@@ -753,12 +753,33 @@ double Dialog::CASschedule(const QString &phase, const double &altitude, const d
             {
                 CAS = Vdes2["AV"];
             }
-            else if(altitude >= 10000 && altitude < transAlt)
+            else if(altitude >= 5500 && altitude < transAlt)
             {
                 CAS = qMin(Vdes1["AV"],250);
             }
             else
             {
+
+                if(altitude >= 750 && altitude < 1500)
+                {
+                    CAS = 140;
+                }
+                else if(altitude >= 1500 && altitude < 2500)
+                {
+                    CAS = 160;
+                }
+                else if(altitude >= 2500 && altitude < 3900)
+                {
+                    CAS = 180;
+                }
+                else if(altitude >= 3900 && altitude < 5500)
+                {
+                    CAS = 210;
+                }
+
+
+
+                /*
                 if(alt >= 0 && alt < 1000)
                 {
                     CAS = C_Vmin * corV_stall_LD;
@@ -783,6 +804,8 @@ double Dialog::CASschedule(const QString &phase, const double &altitude, const d
                 {
                     CAS = qMin(Vdes1["AV"],220);
                 }
+                */
+
             }
         }
         else if(EngType == "Piston")
@@ -2549,11 +2572,11 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
 
         if(activePhaseOfFlight == "DESCENT")
         {
-            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+            Thr = (ftpminTOmps(qAbs(ROCD))/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
         }
         else if(activePhaseOfFlight == "CLIMB" || activePhaseOfFlight == "CRUISE")
         {
-            Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/(knotsTOmps(TAS)*C_pow_red)) + D;  // musim dopocitat tah z ROCD
+            Thr = (ftpminTOmps(qAbs(ROCD))/fM) * (T/(T-deltaT)) * (ACMass*g0/(knotsTOmps(TAS)*C_pow_red)) + D;  // musim dopocitat tah z ROCD
         }
 
         grad = getGradient(ftTOm(delta_Hp),NMtom(dist));
@@ -2633,7 +2656,7 @@ QVector<double> Dialog::BADAcalc(const QString activePhaseOfFlight, const QStrin
             CAS_act = CAS;
         }
 
-        Thr = (ftpminTOmps(ROCD)/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
+        Thr = (ftpminTOmps(qAbs(ROCD))/fM) * (T/(T-deltaT)) * (ACMass*g0/knotsTOmps(TAS)) + D;  // musim dopocitat tah z ROCD
 
         FFlow = fuelFlow(TAS, Thr, Hp, activePhaseOfFlight, flightConfig, EngineType, false) / 60;  // in [kg/s]
 
@@ -2711,7 +2734,7 @@ void Dialog::parse_clicked()
     double ROCD_act = 1500;        // "-" for descent at ROCD
     double GRAD_act = -3;           // "-" for descent at angle
     double M = 0.78;
-    double fM_def = 0.8;               //  CLIMB -> fM < 1 =>acceleration
+    double fM_def = 0.6;               //  CLIMB -> fM < 1 =>acceleration
     double Hp_act = 10000;             // [ft]
     double BankAngle = 0;
     QString phaseOfFlight = "DESCENT";
@@ -2771,11 +2794,12 @@ void Dialog::parse_clicked()
         if(CAS_act > v_min)
         {
             outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, true, fM_def, transAlt);
+            qDebug() << Hp_act << CAS_act << v_min;
         }
         else
         {
-
             outVect = BADAcalc(phaseOfFlight, "GRAD", Hp_act, CAS_act, M, ROCD_act, GRAD_act, ACMass_act, BankAngle, time, false, fM_def, transAlt);
+            qDebug() << Hp_act << CAS_act << v_min;
         }
 
         Hp_vect << outVect[0];
